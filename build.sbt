@@ -5,12 +5,18 @@ ThisBuild / version          := "0.1.0-SNAPSHOT"
 ThisBuild / organization     := "com.example"
 ThisBuild / organizationName := "example"
 
+enablePlugins(ScalaJSPlugin)
+
 lazy val root = (project in file("."))
   .settings(
     name := "HelloGitpod",
     libraryDependencies += scalaTest % Test
   )
 
+libraryDependencies ++= Seq(
+  "com.lihaoyi" %% "cask" % "0.9.2",
+  "org.scala-js" %%% "scalajs-dom" % "2.4.0"
+)
 // Uncomment the following for publishing to Sonatype.
 // See https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html for more detail.
 
