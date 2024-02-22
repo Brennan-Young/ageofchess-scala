@@ -157,14 +157,14 @@ case class Board(squares: Vector[Vector[Square]]) {
   def width = squares.headOption.map(_.size).getOrElse(0)
 
   def get(location: Location): Option[Square] = {
-    squares.lift(height - location.y).flatMap(_.lift(location.x))
+    squares.lift(height - location.y).flatMap(_.lift(location.x - 1))
   }
 
   def placePiece(location: Location, p: Piece): Board = {
     this.copy(
       squares = this.squares.updated(
         height - location.y, this.squares(height - location.y).updated(
-          location.x, this.get(location).get match {
+          location.x - 1, this.get(location).get match {
             case Terrain(loc, None) => Terrain(loc, Some(new PlacedPiece { override def location = loc; override def piece = p }))
           })))
   }
@@ -183,7 +183,7 @@ object Board {
   ): Board = {
     val x = (0 until height).map { i =>
       (0 until width).map { j =>
-        Terrain(Location(i, j), None)
+        Terrain(Location(j + 1, height - i), None)
       }.toVector
     }.toVector
 
@@ -197,6 +197,9 @@ object Main extends App {
   val loc = Location(4, 5)
 
   val nextBoard = board.placePiece(Location(4, 5), WhiteKnight).placePiece(Location(6, 6), BlackPawn).placePiece(Location(2, 4), WhiteBishop)
+
+  nextBoard.squares.foreach { row => println(row.map(_.location))}
+
 
   nextBoard.get(Location(4, 5)).foreach { square =>
     square.occupyingPiece.foreach { piece =>
