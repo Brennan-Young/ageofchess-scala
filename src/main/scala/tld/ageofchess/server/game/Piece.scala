@@ -208,6 +208,15 @@ case class SparseBoard(height: Int, width: Int, squares: Map[Location, Square], 
   }
 }
 
+case class Player(color: Color, gold: Int)
+
+case class GameState(
+  white: Player,
+  black: Player,
+  board: SparseBoard,
+  whiteToMove: Boolean
+)
+
 trait Symmetry
 case object NoSymmetry extends Symmetry
 case object Horizontal extends Symmetry
