@@ -15,10 +15,7 @@ trait Piece {
   def captures: Set[MoveVector]
 }
 
-trait PlacedPiece {
-  def location: Location
-  def piece: Piece
-
+case class PlacedPiece(location: Location, piece: Piece) {
   def validMoves(board: Board): Set[Square] = {
     piece.moves.flatMap { moveVector =>
       getValid(mutable.Set.empty[Square], board, location, moveVector)
@@ -152,6 +149,19 @@ trait Resource extends Square {
   override def value = 3
 }
 
+case class SparseBoard(height: Int, width: Int, squares: Map[Location, Square], pieces: Map[Location, PlacedPiece]) {
+  def placePiece(location: Location, p: Piece): SparseBoard = {
+    this.copy(pieces = this.pieces + (location -> PlacedPiece(location, p)))
+  }
+}
+
+trait Symmetry
+case object NoSymmetry extends Symmetry
+case object Horizontal extends Symmetry
+case object Vertical extends Symmetry
+case object Rotational extends Symmetry
+
+
 case class Board(squares: Vector[Vector[Square]]) {
   def height = squares.size
   def width = squares.headOption.map(_.size).getOrElse(0)
@@ -165,16 +175,10 @@ case class Board(squares: Vector[Vector[Square]]) {
       squares = this.squares.updated(
         height - location.y, this.squares(height - location.y).updated(
           location.x - 1, this.get(location).get match {
-            case Terrain(loc, None) => Terrain(loc, Some(new PlacedPiece { override def location = loc; override def piece = p }))
+            case Terrain(loc, None) => Terrain(loc, Some(PlacedPiece(location, p)))
           })))
   }
 }
-
-trait Symmetry
-case object NoSymmetry extends Symmetry
-case object Horizontal extends Symmetry
-case object Vertical extends Symmetry
-case object Rotational extends Symmetry
 
 object Board {
   def generate(
