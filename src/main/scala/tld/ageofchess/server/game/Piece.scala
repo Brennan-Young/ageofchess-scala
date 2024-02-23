@@ -58,7 +58,7 @@ case class MoveVector(
 )
 
 trait Pawn extends Piece {
-  override def value = 25
+  override def value = 20
 
   override def moves = Set(
     MoveVector(1, 0, false),
@@ -76,7 +76,7 @@ trait Pawn extends Piece {
 }
 
 trait Knight extends Piece {
-  override def value = 35
+  override def value = 30
 
   override def moves = Set(
     MoveVector(2, 1, false),
@@ -93,7 +93,7 @@ trait Knight extends Piece {
 }
 
 trait Bishop extends Piece {
-  override def value = 30
+  override def value = 25
 
   override def moves = Set(
     MoveVector(1, 1, true),
@@ -105,6 +105,51 @@ trait Bishop extends Piece {
   override def captures = moves
 }
 
+trait Rook extends Piece {
+  override def value = 35
+
+  override def moves = Set(
+    MoveVector(1, 0, true),
+    MoveVector(0, 1, true),
+    MoveVector(-1, 0, true),
+    MoveVector(0, -1, true)
+  )
+
+  override def captures = moves
+}
+
+trait Queen extends Piece {
+  override def value = 70
+
+  override def moves = Set(
+    MoveVector(1, 1, true),
+    MoveVector(1, -1, true),
+    MoveVector(-1, -1, true),
+    MoveVector(-1, 1, true),
+    MoveVector(1, 0, true),
+    MoveVector(0, 1, true),
+    MoveVector(-1, 0, true),
+    MoveVector(0, -1, true)
+  )
+
+  override def captures = moves
+}
+
+trait King extends Piece {
+  override def value = 0
+
+  override def moves = Set(
+    MoveVector(1, 1, false),
+    MoveVector(1, -1, false),
+    MoveVector(-1, -1, false),
+    MoveVector(-1, 1, false),
+    MoveVector(1, 0, false),
+    MoveVector(0, 1, false),
+    MoveVector(-1, 0, false),
+    MoveVector(0, -1, false)
+  )
+}
+
 case object WhitePawn extends Pawn { override def color = White }
 case object BlackPawn extends Pawn { override def color = Black }
 
@@ -112,6 +157,14 @@ case object WhiteKnight extends Knight { override def color = White }
 case object BlackKnight extends Knight { override def color = Black }
 case object WhiteBishop extends Bishop { override def color = White }
 case object BlackBishop extends Bishop { override def color = Black }
+
+case object WhiteRook extends Rook { override def color = White }
+case object BlackRook extends Rook { override def color = Black }
+
+case object WhiteQueen extends Queen { override def color = White }
+case object BlackQueen extends Queen { override def color = Black }
+case object WhiteKing extends King { override def color = White }
+case object BlackKing extends King { override def color = Black }
 
 case class Location(x: Int, y: Int) {
   def translate(vector: MoveVector): Location = {
@@ -160,7 +213,6 @@ case object NoSymmetry extends Symmetry
 case object Horizontal extends Symmetry
 case object Vertical extends Symmetry
 case object Rotational extends Symmetry
-
 
 case class Board(squares: Vector[Vector[Square]]) {
   def height = squares.size
