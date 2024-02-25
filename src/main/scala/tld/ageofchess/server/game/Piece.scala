@@ -40,8 +40,8 @@ case class PlacedPiece(location: Location, piece: Piece) {
     nextSquare match {
       case None => state.toSet
       case Some(square) => {
-        if (!square.canMoveOnto) state.toSet
-        else if (!square.canPassThrough) (state + square).toSet
+        if (!square.squareType.canMoveOnto) state.toSet
+        else if (!square.squareType.canPassThrough) (state + square).toSet
         else if (!moveVector.infinite) (state + square).toSet
         else {
           getValid(state + square, board, nextSquareLocation, moveVector)
@@ -270,18 +270,18 @@ case class GameState(
 
   // Assume moves and creations are valid here.  Do validation one level up
 
-  def nextState(
-    action: PlayerAction
-  ): GameState = {
-    action match {
-      case MovePiece(player, source, destination) => nextStateMove(player, source, destination)
-      case CreatePiece(player, loc, piece) => nextStateCreate(player, source, destination)
-    }
-  }
+  // def nextState(
+  //   action: PlayerAction
+  // ): GameState = {
+  //   action match {
+  //     case MovePiece(player, source, destination) => nextStateMove(player, source, destination)
+  //     // case CreatePiece(player, loc, piece) => nextStateCreate(player, source, destination)
+  //   }
+  // }
 
-  private def nextStateMove(player: Player, source: Location, destination: Location): GameState = {
-    val nextPieces = board.pieces - source + (destination -> board.pieces.get(source).get)
-  }
+  // private def nextStateMove(player: Player, source: Location, destination: Location): GameState = {
+  //   val nextPieces = board.pieces - source + (destination -> board.pieces.get(source).get)
+  // }
 }
 
 trait Symmetry
@@ -300,22 +300,22 @@ case class Board(squares: Vector[Vector[Square]]) {
 
   def placePiece(location: Location, p: Piece): Board = {
     this.copy(
-      squares = this.square.updated(
+      squares = this.squares.updated(
         height - location.y, this.squares(height - location.y).updated(
-          location.x - 1, this.get(location).get.copy(occupyingPiece = Some(p))
+          location.x - 1, this.get(location).get.copy(occupyingPiece = Some(PlacedPiece(location, p)))
         )
       )
     )
   }
 
-  def placePiece(location: Location, p: Piece): Board = {
-    this.copy(
-      squares = this.squares.updated(
-        height - location.y, this.squares(height - location.y).updated(
-          location.x - 1, this.get(location).get match {
-            case Terrain(loc, None) => Terrain(loc, Some(PlacedPiece(location, p)))
-          })))
-  }
+  // def placePiece(location: Location, p: Piece): Board = {
+  //   this.copy(
+  //     squares = this.squares.updated(
+  //       height - location.y, this.squares(height - location.y).updated(
+  //         location.x - 1, this.get(location).get match {
+  //           case Terrain(loc, None) => Terrain(loc, Some(PlacedPiece(location, p)))
+  //         })))
+  // }
 }
 
 object Board {
