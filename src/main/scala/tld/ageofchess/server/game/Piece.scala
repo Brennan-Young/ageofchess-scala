@@ -148,6 +148,8 @@ trait King extends Piece {
     MoveVector(-1, 0, false),
     MoveVector(0, -1, false)
   )
+
+  override def captures = moves
 }
 
 case object WhitePawn extends Pawn { override def color = White }
@@ -172,35 +174,77 @@ case class Location(x: Int, y: Int) {
   }
 }
 
-trait Square {
-  def location: Location
-  def occupyingPiece: Option[PlacedPiece]
-
+trait SquareType {
   def canMoveOnto: Boolean
   def canPassThrough: Boolean
-  def value: Int = 0
+  def value: Int
 }
 
-case class Terrain(location: Location, occupyingPiece: Option[PlacedPiece]) extends Square {
-  override def canMoveOnto = true
-  override def canPassThrough = true
+case object Terrain extends SquareType {
+  override def canMoveOnto: Boolean = true
+  override def canPassThrough: Boolean = true
+  override def value: Int = 0
 }
 
-trait Rock extends Square {
-  override def canMoveOnto = false
-  override def canPassThrough = false
+case object Rock extends SquareType {
+  override def canMoveOnto: Boolean = false
+  override def canPassThrough: Boolean = false
+  override def value: Int = 0
 }
 
-trait Tree extends Square {
-  override def canMoveOnto = true
-  override def canPassThrough = false
+case object Tree extends SquareType {
+  override def canMoveOnto: Boolean = true
+  override def canPassThrough: Boolean = false
+  override def value: Int = 0
 }
 
-trait Resource extends Square {
-  override def canMoveOnto = true
-  override def canPassThrough = false
-  override def value = 3
+case object Resource extends SquareType {
+  override def canMoveOnto: Boolean = true
+  override def canPassThrough: Boolean = false
+  override def value: Int = 3
 }
+
+case object Treasure extends SquareType {
+  override def canMoveOnto: Boolean = true
+  override def canPassThrough: Boolean = false
+  override def value: Int = 20
+}
+
+case class Square(
+  squareType: SquareType,
+  location: Location,
+  occupyingPiece: Option[PlacedPiece]
+)
+
+// trait Square {
+//   def location: Location
+//   def occupyingPiece: Option[PlacedPiece]
+
+//   def canMoveOnto: Boolean
+//   def canPassThrough: Boolean
+//   def value: Int = 0
+// }
+
+// case class Terrain(location: Location, occupyingPiece: Option[PlacedPiece]) extends Square {
+//   override def canMoveOnto = true
+//   override def canPassThrough = true
+// }
+
+// trait Rock extends Square {
+//   override def canMoveOnto = false
+//   override def canPassThrough = false
+// }
+
+// trait Tree extends Square {
+//   override def canMoveOnto = true
+//   override def canPassThrough = false
+// }
+
+// trait Resource extends Square {
+//   override def canMoveOnto = true
+//   override def canPassThrough = false
+//   override def value = 3
+// }
 
 case class SparseBoard(height: Int, width: Int, squares: Map[Location, Square], pieces: Map[Location, PlacedPiece]) {
   def placePiece(location: Location, p: Piece): SparseBoard = {
@@ -210,12 +254,35 @@ case class SparseBoard(height: Int, width: Int, squares: Map[Location, Square], 
 
 case class Player(color: Color, gold: Int)
 
+trait PlayerAction {
+  def player: Player
+}
+
+case class MovePiece(player: Player, source: Location, destination: Location) extends PlayerAction
+case class CreatePiece(player: Player, loc: Location, piece: Piece) extends PlayerAction
+
 case class GameState(
   white: Player,
   black: Player,
   board: SparseBoard,
   whiteToMove: Boolean
-)
+) {
+
+  // Assume moves and creations are valid here.  Do validation one level up
+
+  def nextState(
+    action: PlayerAction
+  ): GameState = {
+    action match {
+      case MovePiece(player, source, destination) => nextStateMove(player, source, destination)
+      case CreatePiece(player, loc, piece) => nextStateCreate(player, source, destination)
+    }
+  }
+
+  private def nextStateMove(player: Player, source: Location, destination: Location): GameState = {
+    val nextPieces = board.pieces - source + (destination -> board.pieces.get(source).get)
+  }
+}
 
 trait Symmetry
 case object NoSymmetry extends Symmetry
@@ -229,6 +296,16 @@ case class Board(squares: Vector[Vector[Square]]) {
 
   def get(location: Location): Option[Square] = {
     squares.lift(height - location.y).flatMap(_.lift(location.x - 1))
+  }
+
+  def placePiece(location: Location, p: Piece): Board = {
+    this.copy(
+      squares = this.square.updated(
+        height - location.y, this.squares(height - location.y).updated(
+          location.x - 1, this.get(location).get.copy(occupyingPiece = Some(p))
+        )
+      )
+    )
   }
 
   def placePiece(location: Location, p: Piece): Board = {
@@ -248,7 +325,7 @@ object Board {
   ): Board = {
     val x = (0 until height).map { i =>
       (0 until width).map { j =>
-        Terrain(Location(j + 1, height - i), None)
+        Square(Terrain, Location(j + 1, height - i), None)
       }.toVector
     }.toVector
 
