@@ -2,6 +2,9 @@ package tld.ageofchess.server.game
 
 import scala.collection.mutable
 import scala.annotation.tailrec
+import scala.scalajs.js.annotation.JSExport
+import org.scalajs.dom
+import org.scalajs.dom.html
 
 trait Color
 case object White extends Color
@@ -333,27 +336,27 @@ object Board {
   }
 }
 
-object Main extends App {
-  val board = Board.generate(10, 10)
+// object Main extends App {
+//   val board = Board.generate(10, 10)
 
-  val loc = Location(4, 5)
+//   val loc = Location(4, 5)
 
-  val nextBoard = board.placePiece(Location(4, 5), WhiteKnight).placePiece(Location(6, 6), BlackPawn).placePiece(Location(2, 4), WhiteBishop)
+//   val nextBoard = board.placePiece(Location(4, 5), WhiteKnight).placePiece(Location(6, 6), BlackPawn).placePiece(Location(2, 4), WhiteBishop)
 
-  nextBoard.squares.foreach { row => println(row.map(_.location))}
+//   nextBoard.squares.foreach { row => println(row.map(_.location))}
 
 
-  nextBoard.get(Location(4, 5)).foreach { square =>
-    square.occupyingPiece.foreach { piece =>
-      println(piece.validMoves(nextBoard))
-      println(piece.validCaptures(nextBoard))  
-    }
-  }
+//   nextBoard.get(Location(4, 5)).foreach { square =>
+//     square.occupyingPiece.foreach { piece =>
+//       println(piece.validMoves(nextBoard))
+//       println(piece.validCaptures(nextBoard))  
+//     }
+//   }
 
-  nextBoard.get(Location(2, 4)).foreach { square =>
-    square.occupyingPiece.foreach { piece =>
-      println(piece.validMoves(nextBoard))
-      println(piece.validCaptures(nextBoard))  
-    }
-  }
-}
+//   nextBoard.get(Location(2, 4)).foreach { square =>
+//     square.occupyingPiece.foreach { piece =>
+//       println(piece.validMoves(nextBoard))
+//       println(piece.validCaptures(nextBoard))  
+//     }
+//   }
+// }

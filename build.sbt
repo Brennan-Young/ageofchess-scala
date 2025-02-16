@@ -1,4 +1,5 @@
 import Dependencies._
+import org.scalajs.linker.interface.ModuleSplitStyle
 
 ThisBuild / scalaVersion     := "2.12.18"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
@@ -8,14 +9,22 @@ ThisBuild / organizationName := "example"
 // enablePlugins(ScalaJSPlugin)
 
 lazy val root = (project in file("."))
+  .enablePlugins(ScalaJSPlugin)
   .settings(
     name := "HelloGitpod",
-    libraryDependencies += scalaTest % Test
+    libraryDependencies += scalaTest % Test,
+    scalaJSUseMainModuleInitializer := true,
+     scalaJSLinkerConfig ~= {
+      _.withModuleKind(ModuleKind.ESModule)
+        .withModuleSplitStyle(
+          ModuleSplitStyle.SmallModulesFor(List("ageofchess")))
+    }
   )
 
 libraryDependencies ++= Seq(
-  "com.lihaoyi" %% "cask" % "0.9.2"
-  // "org.scala-js" %%% "scalajs-dom" % "2.4.0"
+  "com.lihaoyi" %% "cask" % "0.9.2",
+  "org.scala-js" %%% "scalajs-dom" % "2.8.0",
+  "com.raquo" %%% "laminar" % "16.0.0"
 )
 // Uncomment the following for publishing to Sonatype.
 // See https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html for more detail.
