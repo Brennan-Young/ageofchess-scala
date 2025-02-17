@@ -6,7 +6,7 @@ import scala.scalajs.js.annotation._
 import org.scalajs.dom
 
 import com.raquo.laminar.api.L._
-
+import tld.ageofchess.server.game._
 
 
 object Main extends App {
