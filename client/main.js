@@ -1,5 +1,9 @@
+// import './style.css'
+// import 'scalajs:main.js'
+
 import './style.css'
-import 'scalajs:main.js'
+import '/target/scala-2.12/client-fastopt/main.js'  // Adjust to match your output
+
 
 // import './style.css'
 // import javascriptLogo from './javascript.svg'
