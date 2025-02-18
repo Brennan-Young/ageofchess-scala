@@ -7,15 +7,17 @@ import org.scalajs.dom
 
 import com.raquo.laminar.api.L._
 
-object Main extends App {
-  // import javascriptLogo from "/javascript.svg"
+object Main {
+
+  def main(args: Array[String]): Unit = {
+    renderOnDomContentLoaded(
+      dom.document.getElementById("app"),
+      appElement()
+    )
+  }
+  
   @js.native @JSImport("/javascript.svg", JSImport.Default)
   val javascriptLogo: String = js.native
-
-  renderOnDomContentLoaded(
-    dom.document.getElementById("app"),
-    appElement()
-  )
 
   def appElement(): Element = {
     div(

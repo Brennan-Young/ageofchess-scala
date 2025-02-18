@@ -4,6 +4,8 @@ import cask.MainRoutes
 import upickle.default.{ReadWriter, macroRW}
 
 object Server extends MainRoutes {
+  println("hello world")
+
   @cask.get("/")
   def home(): String = "Cask is running"
 

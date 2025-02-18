@@ -3,8 +3,8 @@ import org.scalajs.linker.interface.ModuleSplitStyle
 
 ThisBuild / scalaVersion     := "2.12.18"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
-ThisBuild / organization     := "com.example"
-ThisBuild / organizationName := "example"
+ThisBuild / organization     := "tld.ageofchess"
+ThisBuild / organizationName := "tld"
 
 enablePlugins(ScalaJSPlugin)
 
@@ -15,7 +15,7 @@ lazy val shared = crossProject(JSPlatform, JVMPlatform).in(file("shared"))
   )
   .jvmSettings()
   .jsSettings(
-    scalaJSUseMainModuleInitializer := true,
+    // scalaJSUseMainModuleInitializer := true,
      scalaJSLinkerConfig ~= {
       _.withModuleKind(ModuleKind.ESModule)
         .withModuleSplitStyle(
