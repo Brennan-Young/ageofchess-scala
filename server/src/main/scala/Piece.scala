@@ -2,9 +2,6 @@ package tld.ageofchess.server.game
 
 import scala.collection.mutable
 import scala.annotation.tailrec
-import scala.scalajs.js.annotation.JSExport
-import org.scalajs.dom
-import org.scalajs.dom.html
 
 trait Color
 case object White extends Color
