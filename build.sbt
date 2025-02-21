@@ -8,7 +8,9 @@ ThisBuild / organizationName := "com"
 
 enablePlugins(ScalaJSPlugin)
 
-lazy val shared = crossProject(JSPlatform, JVMPlatform).in(file("shared"))
+lazy val shared = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("shared"))
   .settings(
     name := "shared",
     scalaVersion := "2.12.18"
