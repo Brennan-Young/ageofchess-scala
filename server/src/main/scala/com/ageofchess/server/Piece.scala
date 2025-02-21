@@ -1,7 +1,8 @@
-package tld.ageofchess.server.game
+package com.ageofchess.server
 
 import scala.collection.mutable
 import scala.annotation.tailrec
+import com.ageofchess.shared._
 
 trait Color
 case object White extends Color
@@ -174,77 +175,11 @@ case class Location(x: Int, y: Int) {
   }
 }
 
-trait SquareType {
-  def canMoveOnto: Boolean
-  def canPassThrough: Boolean
-  def value: Int
-}
-
-case object Terrain extends SquareType {
-  override def canMoveOnto: Boolean = true
-  override def canPassThrough: Boolean = true
-  override def value: Int = 0
-}
-
-case object Rock extends SquareType {
-  override def canMoveOnto: Boolean = false
-  override def canPassThrough: Boolean = false
-  override def value: Int = 0
-}
-
-case object Tree extends SquareType {
-  override def canMoveOnto: Boolean = true
-  override def canPassThrough: Boolean = false
-  override def value: Int = 0
-}
-
-case object Resource extends SquareType {
-  override def canMoveOnto: Boolean = true
-  override def canPassThrough: Boolean = false
-  override def value: Int = 3
-}
-
-case object Treasure extends SquareType {
-  override def canMoveOnto: Boolean = true
-  override def canPassThrough: Boolean = false
-  override def value: Int = 20
-}
-
 case class Square(
   squareType: SquareType,
   location: Location,
   occupyingPiece: Option[PlacedPiece]
 )
-
-// trait Square {
-//   def location: Location
-//   def occupyingPiece: Option[PlacedPiece]
-
-//   def canMoveOnto: Boolean
-//   def canPassThrough: Boolean
-//   def value: Int = 0
-// }
-
-// case class Terrain(location: Location, occupyingPiece: Option[PlacedPiece]) extends Square {
-//   override def canMoveOnto = true
-//   override def canPassThrough = true
-// }
-
-// trait Rock extends Square {
-//   override def canMoveOnto = false
-//   override def canPassThrough = false
-// }
-
-// trait Tree extends Square {
-//   override def canMoveOnto = true
-//   override def canPassThrough = false
-// }
-
-// trait Resource extends Square {
-//   override def canMoveOnto = true
-//   override def canPassThrough = false
-//   override def value = 3
-// }
 
 case class SparseBoard(height: Int, width: Int, squares: Map[Location, Square], pieces: Map[Location, PlacedPiece]) {
   def placePiece(location: Location, p: Piece): SparseBoard = {

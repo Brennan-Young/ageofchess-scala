@@ -3,8 +3,8 @@ import org.scalajs.linker.interface.ModuleSplitStyle
 
 ThisBuild / scalaVersion     := "2.12.18"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
-ThisBuild / organization     := "tld.ageofchess"
-ThisBuild / organizationName := "tld"
+ThisBuild / organization     := "com.ageofchess"
+ThisBuild / organizationName := "com"
 
 enablePlugins(ScalaJSPlugin)
 

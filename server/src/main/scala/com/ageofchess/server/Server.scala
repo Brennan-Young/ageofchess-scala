@@ -1,10 +1,11 @@
-package tld.ageofchess.server
+package com.ageofchess.server
 
 import cask.{MainRoutes, Response}
 import upickle.default.{ReadWriter, macroRW}
 
 object Server extends MainRoutes {
-  @cask.staticFiles("/client/target/scala-2.12")
+  @cask.staticFiles("/js/")
+  def serve() = "client/target/scala-2.12/client-fastopt"
 
   @cask.get("/")
   def serveHomePage(vscodeBrowserReqId: Option[String] = None): Response[String] = {
@@ -13,7 +14,7 @@ object Server extends MainRoutes {
         <html>
         <head>
           <title>Age of Chess</title>
-          <script type="module" src="/client/target/scala-2.12/main.js"></script>
+          <script type="module" src="/js/main.js"></script>
         </head>
         <body></body>
         </html>""",
@@ -28,7 +29,7 @@ object Server extends MainRoutes {
         <html>
         <head>
           <title>Age of Chess - Game</title>
-          <script type="module" src="/client/target/scala-2.12/main.js"></script>
+          <script type="module" src="/js/main.js"></script>
         </head>
         <body></body>
       </html>""",
