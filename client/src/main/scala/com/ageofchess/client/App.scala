@@ -1,4 +1,4 @@
-package tld.ageofchess.client
+package com.ageofchess.client
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
@@ -7,9 +7,41 @@ import org.scalajs.dom
 
 import com.raquo.laminar.api.L._
 
+import com.ageofchess.shared.board._
+
+object Board {
+  def renderBoard(board: Vector[Vector[RenderableSquare]]): HtmlElement = {
+    val numColumns = board.headOption.map(_.size).getOrElse(0)
+
+    div(
+      cls := "board",
+      styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
+      board.zipWithIndex.map { case (row, rIdx) =>
+        div(
+          cls := "board-row",
+          row.zipWithIndex.map { case (square, cIdx) =>
+            img(
+              cls := "board-square",
+              src := s"/assets/${square.asset}",
+              alt := s"Square at ($rIdx, $cIdx)"
+            )
+          }
+        )
+      }
+    )
+  }
+}
+
 object Main {
   def main(args: Array[String]): Unit = {
     val currentPath = org.scalajs.dom.window.location.pathname
+
+    dom.document.head.appendChild {
+      val link = dom.document.createElement("link")
+      link.setAttribute("rel", "stylesheet")
+      link.setAttribute("href", "/public/style.css")
+      link
+    }
 
     val app = currentPath match {
       case "/"      => homePage()
@@ -28,7 +60,7 @@ object Main {
 
   def gamePage(): Div = div(
     h1("Game Board"),
-    p("Here is where the chess game will be displayed."),
+    Board.renderBoard(defaultRenderableBoard),
     a(href := "/", "Back to Home")
   )
 

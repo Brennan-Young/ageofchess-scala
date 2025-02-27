@@ -1,4 +1,4 @@
-package com.ageofchess.shared
+package com.ageofchess.shared 
 
 trait SquareType {
   def canMoveOnto: Boolean

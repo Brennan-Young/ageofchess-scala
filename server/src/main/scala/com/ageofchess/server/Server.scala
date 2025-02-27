@@ -7,6 +7,12 @@ object Server extends MainRoutes {
   @cask.staticFiles("/js/")
   def serve() = "client/target/scala-2.12/client-fastopt"
 
+  @cask.staticFiles("assets")
+  def serveAssets() = "client/src/main/resources/assets"
+
+  @cask.staticFiles("public")
+  def serveCss() = "client/src/main/resources/public"
+
   @cask.get("/")
   def serveHomePage(vscodeBrowserReqId: Option[String] = None): Response[String] = {
     cask.Response(
