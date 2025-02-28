@@ -8,9 +8,12 @@ import org.scalajs.dom
 import com.raquo.laminar.api.L._
 
 import com.ageofchess.shared.board._
+import upickle.default._
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext
 
 object Board {
-  def renderBoard(board: Vector[Vector[RenderableSquare]]): HtmlElement = {
+  def renderBoard(board: Vector[Vector[RenderableSquare]]): Node = {
     val numColumns = board.headOption.map(_.size).getOrElse(0)
 
     div(
@@ -33,6 +36,8 @@ object Board {
 }
 
 object Main {
+  implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
+
   def main(args: Array[String]): Unit = {
     val currentPath = org.scalajs.dom.window.location.pathname
 
@@ -58,11 +63,25 @@ object Main {
     a(href := "/game", "Start Game")
   )
 
-  def gamePage(): Div = div(
-    h1("Game Board"),
-    Board.renderBoard(defaultRenderableBoard),
-    a(href := "/", "Back to Home")
-  )
+  def gamePage(): Div = {
+    val board: Future[Vector[Vector[RenderableSquare]]]= dom.fetch("/api/board").toFuture.flatMap { resp =>
+      resp.text().toFuture
+    }
+      .map { json => read[Board](json).toRenderable }
+
+    val boardVar: Var[Option[Vector[Vector[RenderableSquare]]]] = Var(None)
+
+    board.foreach { renderableBoard => boardVar.set(Some(renderableBoard))}
+
+    div(
+      h1("Game Board"),
+      children <-- boardVar.signal.map {
+        case Some(b) => Seq(Board.renderBoard(b))
+        case None => Seq(div("Loading"))
+      },
+      a(href := "/", "Back to Home")
+    )
+  }
 
   def notFoundPage(): Div = div(
     h1("404 - Page Not Found"),

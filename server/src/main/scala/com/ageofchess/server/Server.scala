@@ -1,7 +1,8 @@
 package com.ageofchess.server
 
 import cask.{MainRoutes, Response}
-import upickle.default.{ReadWriter, macroRW}
+import upickle.default._
+import com.ageofchess.shared.board._
 
 object Server extends MainRoutes {
   @cask.staticFiles("/js/")
@@ -41,7 +42,12 @@ object Server extends MainRoutes {
       </html>""",
       headers = Seq("Content-Type" -> "text/html")
     )
-    
+  }
+
+  @cask.get("/api/board")
+  def getBoard(): ujson.Value = {
+    val board = defaultBoard
+    write(board)
   }
 
   initialize()

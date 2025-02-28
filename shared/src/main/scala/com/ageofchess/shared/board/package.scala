@@ -1,5 +1,7 @@
 package com.ageofchess.shared
 
+import upickle.default.{ReadWriter, macroRW}
+
 package object board {
   sealed trait SquareColor {
     def id: String
@@ -11,11 +13,26 @@ package object board {
   sealed trait SquareType {
     def id: String
   }
+  object SquareType {
+    implicit val rw: ReadWriter[SquareType] = macroRW
+  }
 
-  case object Terrain extends SquareType { override def id: String = "base" }
-  case object Mine extends SquareType { override def id: String = "mine" }
-  case object Trees extends SquareType { override def id: String = "trees" }
-  case object Rocks extends SquareType { override def id: String = "rocks" }
+  case object Terrain extends SquareType { 
+    override def id: String = "base"
+    implicit val rw: ReadWriter[Terrain.type] = macroRW
+  }
+  case object Mine extends SquareType {
+    override def id: String = "mine"
+    implicit val rw: ReadWriter[Mine.type] = macroRW
+  }
+  case object Trees extends SquareType {
+    override def id: String = "trees"
+    implicit val rw: ReadWriter[Trees.type] = macroRW
+  }
+  case object Rocks extends SquareType {
+    override def id: String = "rocks"
+    implicit val rw: ReadWriter[Rocks.type] = macroRW
+  }
 
   case class RenderableSquare(color: SquareColor, squareType: SquareType) {
     def asset: String = s"${color.id}_${squareType.id}.png"
@@ -43,6 +60,10 @@ package object board {
         }  
       }
     }
+  }
+
+  object Board {
+    implicit val rw: ReadWriter[Board] = macroRW
   }
 
   

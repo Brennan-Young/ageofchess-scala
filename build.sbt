@@ -13,7 +13,10 @@ lazy val shared = crossProject(JSPlatform, JVMPlatform)
   .in(file("shared"))
   .settings(
     name := "shared",
-    scalaVersion := "2.12.18"
+    scalaVersion := "2.12.18",
+    libraryDependencies ++= Seq(
+      "com.lihaoyi" %% "upickle" % "3.1.0"
+    )
   )
   .jvmSettings()
   .jsSettings(
@@ -50,7 +53,8 @@ lazy val client = project.in(file("client"))
      },
     libraryDependencies ++= Seq(
       "org.scala-js" %%% "scalajs-dom" % "2.8.0",
-      "com.raquo" %%% "laminar" % "16.0.0"
+      "com.raquo" %%% "laminar" % "16.0.0",
+      "com.lihaoyi" %% "upickle" % "3.1.0"
     )
   )
 
