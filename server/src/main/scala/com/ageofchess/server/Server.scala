@@ -47,7 +47,7 @@ object Server extends MainRoutes {
   @cask.get("/api/board")
   def getBoard(): ujson.Value = {
     val board = defaultBoard
-    write(board)
+    writeJs(board)
   }
 
   initialize()

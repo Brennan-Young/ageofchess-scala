@@ -2,6 +2,7 @@ package com.ageofchess.client
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
+import scala.scalajs.js.JSON
 
 import org.scalajs.dom
 
@@ -9,6 +10,7 @@ import com.raquo.laminar.api.L._
 
 import com.ageofchess.shared.board._
 import upickle.default._
+import ujson.{read => ujsonread}
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 
@@ -64,17 +66,27 @@ object Main {
   )
 
   def gamePage(): Div = {
-    val board: Future[Vector[Vector[RenderableSquare]]]= dom.fetch("/api/board").toFuture.flatMap { resp =>
-      resp.text().toFuture
+    val board: Future[Vector[Vector[RenderableSquare]]] = dom.fetch("/api/board").toFuture.flatMap { resp =>
+      resp.json().toFuture
+      // resp.text().toFuture
     }
       .map { json => 
+        val stringJson = JSON.stringify(json)
         println("a")
         println(json)
+        println(stringJson)
         println("b")
-        try { println(read[Board](json)) }
+        val a = ujsonread(stringJson)
+        try { println(ujson.read(a)) } catch { case e: Exception => e.printStackTrace() }
+        println("j")
+        println(a)
+        // try { println(a.obj) } catch { case e: Exception => e.printStackTrace() }
+        try {println(ujson.read(a)("squares")) } catch { case e: Exception => e.printStackTrace()}
+        println("c")
+        try { println(read[Board](stringJson)) }
         catch { case e: Exception => e.printStackTrace()}
         println("c")
-        val b = read[Board](json).toRenderable
+        val b = read[Board](stringJson).toRenderable
         println("d")
         println(b)
         b

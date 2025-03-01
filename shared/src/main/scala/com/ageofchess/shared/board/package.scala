@@ -1,6 +1,6 @@
 package com.ageofchess.shared
 
-import upickle.default.{ReadWriter, macroRW}
+import upickle.default.{ReadWriter, readwriter, macroRW}
 
 package object board {
   sealed trait SquareColor {
@@ -14,24 +14,40 @@ package object board {
     def id: String
   }
   object SquareType {
-    implicit val rw: ReadWriter[SquareType] = macroRW
+    // implicit val rw: ReadWriter[SquareType] = macroRW
+
+    implicit val rw: ReadWriter[SquareType] = readwriter[String].bimap[SquareType](
+      {
+        case Terrain => "terrain"
+        case Mine => "mine"
+        case Trees => "trees"
+        case Rocks => "rocks"
+      },
+      {
+        case "terrain" => Terrain
+        case "mine" => Mine
+        case "trees" => Trees
+        case "rocks" => Rocks
+        case _ => throw new Exception
+      }
+    )
   }
 
   case object Terrain extends SquareType { 
     override def id: String = "base"
-    implicit val rw: ReadWriter[Terrain.type] = macroRW
+    // implicit val rw: ReadWriter[Terrain.type] = macroRW
   }
   case object Mine extends SquareType {
     override def id: String = "mine"
-    implicit val rw: ReadWriter[Mine.type] = macroRW
+    // implicit val rw: ReadWriter[Mine.type] = macroRW
   }
   case object Trees extends SquareType {
     override def id: String = "trees"
-    implicit val rw: ReadWriter[Trees.type] = macroRW
+    // implicit val rw: ReadWriter[Trees.type] = macroRW
   }
   case object Rocks extends SquareType {
     override def id: String = "rocks"
-    implicit val rw: ReadWriter[Rocks.type] = macroRW
+    // implicit val rw: ReadWriter[Rocks.type] = macroRW
   }
 
   case class RenderableSquare(color: SquareColor, squareType: SquareType) {
