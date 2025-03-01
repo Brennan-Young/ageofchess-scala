@@ -67,17 +67,30 @@ object Main {
     val board: Future[Vector[Vector[RenderableSquare]]]= dom.fetch("/api/board").toFuture.flatMap { resp =>
       resp.text().toFuture
     }
-      .map { json => read[Board](json).toRenderable }
+      .map { json => 
+        println("a")
+        println(json)
+        println("b")
+        try { println(read[Board](json)) }
+        catch { case e: Exception => e.printStackTrace()}
+        println("c")
+        val b = read[Board](json).toRenderable
+        println("d")
+        println(b)
+        b
+      }
 
     val boardVar: Var[Option[Vector[Vector[RenderableSquare]]]] = Var(None)
 
-    board.foreach { renderableBoard => boardVar.set(Some(renderableBoard))}
+    board.foreach { renderableBoard => println(renderableBoard); boardVar.set({println(renderableBoard); Some(renderableBoard)}) }
+
+    println("hello world")
 
     div(
       h1("Game Board"),
-      children <-- boardVar.signal.map {
-        case Some(b) => Seq(Board.renderBoard(b))
-        case None => Seq(div("Loading"))
+      child <-- boardVar.signal.map { //b => Seq(Board.renderBoard(b.get))
+        case Some(b) => Board.renderBoard(b)
+        case None => div("Loading")
       },
       a(href := "/", "Back to Home")
     )
