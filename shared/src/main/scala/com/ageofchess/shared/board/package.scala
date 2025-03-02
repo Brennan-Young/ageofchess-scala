@@ -14,8 +14,6 @@ package object board {
     def id: String
   }
   object SquareType {
-    // implicit val rw: ReadWriter[SquareType] = macroRW
-
     implicit val rw: ReadWriter[SquareType] = readwriter[String].bimap[SquareType](
       {
         case Terrain => "terrain"
@@ -35,19 +33,15 @@ package object board {
 
   case object Terrain extends SquareType { 
     override def id: String = "base"
-    // implicit val rw: ReadWriter[Terrain.type] = macroRW
   }
   case object Mine extends SquareType {
     override def id: String = "mine"
-    // implicit val rw: ReadWriter[Mine.type] = macroRW
   }
   case object Trees extends SquareType {
     override def id: String = "trees"
-    // implicit val rw: ReadWriter[Trees.type] = macroRW
   }
   case object Rocks extends SquareType {
     override def id: String = "rocks"
-    // implicit val rw: ReadWriter[Rocks.type] = macroRW
   }
 
   case class RenderableSquare(color: SquareColor, squareType: SquareType) {

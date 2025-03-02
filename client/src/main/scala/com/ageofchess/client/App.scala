@@ -9,6 +9,7 @@ import org.scalajs.dom
 import com.raquo.laminar.api.L._
 
 import com.ageofchess.shared.board._
+import com.ageofchess.shared.piece._
 import upickle.default._
 import ujson.{read => ujsonread}
 import scala.concurrent.Future
@@ -33,6 +34,31 @@ object Board {
           }
         )
       }
+    )
+  }
+
+  def renderState(boardState: Vector[Vector[(RenderableSquare, Option[RenderablePiece])]]): HtmlElement = {
+    val numColumns = boardState.headOption.map(_.size).getOrElse(0)
+
+    div(
+      cls := "board",
+      styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
+      boardState.zipWithIndex.map { case (row, rIdx) =>
+        div(
+          cls := "board-row",
+          row.zipWithIndex.map { case (square, cIdx) =>
+            renderSquare(square._1, square._2)
+          }
+        )  
+      }
+    )
+  }
+
+  def renderSquare(square: RenderableSquare, piece: Option[RenderablePiece]): HtmlElement = {
+    div(
+      cls := "board-square",
+      backgroundImage := s"url(/assets/${square.asset})",
+      piece.map(p => img(src := s"/assets/pieces/${p.asset}", cls := "piece"))
     )
   }
 }
@@ -67,7 +93,6 @@ object Main {
 
   def gamePage(): Div = {
     val board: Future[Vector[Vector[RenderableSquare]]] = dom.fetch("/api/board").toFuture.flatMap { resp =>
-      // resp.json().toFuture
       resp.text().toFuture
     }
       .map { json =>
@@ -76,12 +101,33 @@ object Main {
 
     val boardVar: Var[Option[Vector[Vector[RenderableSquare]]]] = Var(None)
 
-    board.foreach { renderableBoard => println(renderableBoard); boardVar.set({println(renderableBoard); Some(renderableBoard)}) }
+    board.foreach { renderableBoard => boardVar.set(Some(renderableBoard)) }
+
+    val piecesVar: Var[Option[Map[Location, RenderablePiece]]] = Var(None)
+
+    piecesVar.set(Some(defaultPieces))
+
+    val boardStateSignal: Signal[Option[Vector[Vector[(RenderableSquare, Option[RenderablePiece])]]]] = Signal.combine(boardVar.signal, piecesVar.signal).map {
+      case (Some(board), Some(pieces)) => {
+        val zippedBoard = board.zipWithIndex.map { case (row, rIdx) =>
+          row.zipWithIndex.map { case (square, cIdx) =>
+            val pieceOpt = pieces.get(Location(rIdx, cIdx))
+            (square, pieceOpt)
+          }  
+        }
+        Some(zippedBoard)
+      }
+      case _ => None
+    }
 
     div(
       h1("Game Board"),
-      child <-- boardVar.signal.map { //b => Seq(Board.renderBoard(b.get))
-        case Some(b) => Board.renderBoard(b)
+      // child <-- boardVar.signal.map {
+      //   case Some(b) => Board.renderBoard(b)
+      //   case None => div("Loading")
+      // },
+      child <-- boardStateSignal.map {
+        case Some(b) => Board.renderState(b)
         case None => div("Loading")
       },
       a(href := "/", "Back to Home")
@@ -94,76 +140,3 @@ object Main {
     a(href := "/", "Go Back Home")
   )
 }
-
-// object Main {
-//   def main(args: Array[String]): Unit = {
-//     renderOnDomContentLoaded(
-//       dom.document.getElementById("app"),
-//       appElement()
-//     )
-//   }
-  
-//   @js.native @JSImport("/javascript.svg", JSImport.Default)
-//   val javascriptLogo: String = js.native
-
-//   def appElement(): Element = {
-//     div(
-//       a(href := "https://vitejs.dev", target := "_blank",
-//         img(src := "/vite.svg", className := "logo", alt := "Vite logo"),
-//       ),
-//       a(href := "https://developer.mozilla.org/en-US/docs/Web/JavaScript", target := "_blank",
-//         img(src := javascriptLogo, className := "logo vanilla", alt := "JavaScript logo"),
-//       ),
-//       h1("Hello Laminar!"),
-//       div(className := "card",
-//         counterButton()
-//       ),
-//       p(className := "read-the-docs",
-//         "Click on the Vite logo to learn more",
-//       ),
-//     )
-//   }
-
-//   def counterButton(): Element = {
-//     val counter = Var(0)
-//     button(
-//       tpe := "button",
-//       "count is ",
-//       child.text <-- counter,
-//       onClick --> { event => counter.update(c => c + 1) },
-//     )
-//   }
-
-//   // dom.document.querySelector("#app").innerHTML = s"""
-//   //   <div>
-//   //     <a href="https://vitejs.dev" target="_blank">
-//   //       <img src="/vite.svg" class="logo" alt="Vite logo" />
-//   //     </a>
-//   //     <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">
-//   //       <img src="$javascriptLogo" class="logo vanilla" alt="JavaScript logo" />
-//   //     </a>
-//   //     <h1>Hello Scala.js!</h1>
-//   //     <div class="card">
-//   //       <button id="counter" type="button"></button>
-//   //     </div>
-//   //     <p class="read-the-docs">
-//   //       Click on the Vite logo to learn more
-//   //     </p>
-//   //   </div>
-//   // """
-
-//   // setupCounter(dom.document.getElementById("counter"))
-
-//   // def setupCounter(element: dom.Element): Unit = {
-//   //   var counter = 0
-
-//   //   def setCounter(count: Int): Unit = {
-//   //     counter = count
-//   //     element.innerHTML = s"count is $counter"
-//   //   }
-
-//   //   element.addEventListener("click", {e: dom.Event => setCounter(counter + 1)})
-//   //   setCounter(0)
-//   // }
-
-// }
