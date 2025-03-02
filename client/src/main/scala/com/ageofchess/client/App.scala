@@ -67,36 +67,16 @@ object Main {
 
   def gamePage(): Div = {
     val board: Future[Vector[Vector[RenderableSquare]]] = dom.fetch("/api/board").toFuture.flatMap { resp =>
-      resp.json().toFuture
-      // resp.text().toFuture
+      // resp.json().toFuture
+      resp.text().toFuture
     }
-      .map { json => 
-        val stringJson = JSON.stringify(json)
-        println("a")
-        println(json)
-        println(stringJson)
-        println("b")
-        val a = ujsonread(stringJson)
-        try { println(ujson.read(a)) } catch { case e: Exception => e.printStackTrace() }
-        println("j")
-        println(a)
-        // try { println(a.obj) } catch { case e: Exception => e.printStackTrace() }
-        try {println(ujson.read(a)("squares")) } catch { case e: Exception => e.printStackTrace()}
-        println("c")
-        try { println(read[Board](stringJson)) }
-        catch { case e: Exception => e.printStackTrace()}
-        println("c")
-        val b = read[Board](stringJson).toRenderable
-        println("d")
-        println(b)
-        b
+      .map { json =>
+        read[Board](json).toRenderable
       }
 
     val boardVar: Var[Option[Vector[Vector[RenderableSquare]]]] = Var(None)
 
     board.foreach { renderableBoard => println(renderableBoard); boardVar.set({println(renderableBoard); Some(renderableBoard)}) }
-
-    println("hello world")
 
     div(
       h1("Game Board"),
