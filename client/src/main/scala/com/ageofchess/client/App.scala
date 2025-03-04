@@ -14,6 +14,7 @@ import upickle.default._
 import ujson.{read => ujsonread}
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
+import com.ageofchess.client.board.Board2
 
 object Board {
   def renderBoard(board: Vector[Vector[RenderableSquare]]): Node = {
@@ -36,6 +37,8 @@ object Board {
       }
     )
   }
+
+  val selectedPiece: Var[Option[Location]] = Var(None)
 
   def renderState(boardState: Vector[Vector[(RenderableSquare, Option[RenderablePiece])]]): HtmlElement = {
     val numColumns = boardState.headOption.map(_.size).getOrElse(0)
@@ -103,12 +106,14 @@ object Main {
 
     board.foreach { renderableBoard => boardVar.set(Some(renderableBoard)) }
 
-    val piecesVar: Var[Option[Map[Location, RenderablePiece]]] = Var(None)
+    // val piecesVar: Var[Option[Map[Location, RenderablePiece]]] = Var(None)
+    // val selectedPieceVar: Var[Option[(Location, RenderablePiece)]] = Var(None)
 
-    piecesVar.set(Some(defaultPieces))
+    // piecesVar.set(Some(defaultPieces))
+    val piecesVar: Var[Map[Location, RenderablePiece]] = Var(defaultPieces)
 
     val boardStateSignal: Signal[Option[Vector[Vector[(RenderableSquare, Option[RenderablePiece])]]]] = Signal.combine(boardVar.signal, piecesVar.signal).map {
-      case (Some(board), Some(pieces)) => {
+      case (Some(board), pieces) => {
         val zippedBoard = board.zipWithIndex.map { case (row, rIdx) =>
           row.zipWithIndex.map { case (square, cIdx) =>
             val pieceOpt = pieces.get(Location(rIdx, cIdx))
@@ -127,7 +132,7 @@ object Main {
       //   case None => div("Loading")
       // },
       child <-- boardStateSignal.map {
-        case Some(b) => Board.renderState(b)
+        case Some(b) => Board2.renderState(b, piecesVar)
         case None => div("Loading")
       },
       a(href := "/", "Back to Home")
