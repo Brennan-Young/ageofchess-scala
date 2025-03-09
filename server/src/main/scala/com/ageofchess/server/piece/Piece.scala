@@ -1,4 +1,4 @@
-package com.ageofchess.server
+package com.ageofchess.server.piece
 
 import scala.collection.mutable
 import scala.annotation.tailrec

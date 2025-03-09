@@ -3,6 +3,7 @@ package com.ageofchess.client.board
 import com.raquo.laminar.api.L._
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.piece._
+import com.ageofchess.client.api.Sockets
 import org.scalajs.dom
 
 object Rendering {
@@ -54,6 +55,7 @@ object Rendering {
       onDrop.preventDefault --> { _ =>
         selectedPiece.now() match {
           case Some((selectedPosition)) => {
+            Sockets.sendMove(Move(selectedPosition, location))
             piecesVar.update { pieces =>
               pieces.get(selectedPosition).map { pieceToMove =>
                 pieces - selectedPosition + (location -> pieceToMove)  
@@ -79,6 +81,7 @@ object Rendering {
             pieces - selectedPosition + (location -> pieceToMove)
           }.getOrElse(pieces) 
         }
+        Sockets.sendMove(Move(selectedPosition, location))
         selectedPiece.set(None)
       }
       case Some(_) => selectedPiece.set(None)

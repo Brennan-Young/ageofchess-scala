@@ -8,13 +8,21 @@ import scala.concurrent.Future
 import upickle.default._
 import scala.concurrent.ExecutionContext
 import org.scalajs.dom
+import com.ageofchess.client.api.Queries
+import com.ageofchess.client.api.Sockets
 
 object Game {
+  val piecesVar: Var[Map[Location, RenderablePiece]] = Var(Map())
+
+  Sockets.gameStateSocket.onmessage = event => {
+    val updatedPieces = read[Map[Location, RenderablePiece]](event.data.toString)
+    piecesVar.set(updatedPieces)
+  }
+
   def render(implicit ec: ExecutionContext): Div = {
-    val piecesVar: Var[Map[Location, RenderablePiece]] = Var(Map())
 
     val boardStateSignal: Signal[Option[Vector[Vector[(RenderableSquare, Option[RenderablePiece])]]]] = boardState(piecesVar)
-    println(dom.window.location.host)
+    
     div(
       h1("Game Board"),
       child <-- boardStateSignal.map {
@@ -26,12 +34,7 @@ object Game {
   }
 
   def boardState(piecesVar: Var[Map[Location, RenderablePiece]])(implicit ec: ExecutionContext): Signal[Option[Vector[Vector[(RenderableSquare, Option[RenderablePiece])]]]] = {
-    val board: Future[Vector[Vector[RenderableSquare]]] = dom.fetch("/api/board").toFuture.flatMap { resp =>
-      resp.text().toFuture
-    }
-      .map { json =>
-        read[Board](json).toRenderable
-      }
+    val board: Future[Vector[Vector[RenderableSquare]]] = Queries.fetchBoard()
 
     val boardVar: Var[Option[Vector[Vector[RenderableSquare]]]] = Var(None)
 
