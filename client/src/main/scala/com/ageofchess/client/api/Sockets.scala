@@ -12,6 +12,14 @@ object Sockets {
   }
 
   val gameStateSocket = new dom.WebSocket(ws)
+  
+  val ws2 = if (dom.window.location.protocol == "https:") {
+    s"wss://${dom.window.location.host}/gameState2"
+  } else {
+    s"ws://${dom.window.location.host}/gameState2"
+  }
+
+  val gameState2Socket = new dom.WebSocket(ws2)
 
   def sendMove(move: Move): Unit = {
     gameStateSocket.send(write(move))

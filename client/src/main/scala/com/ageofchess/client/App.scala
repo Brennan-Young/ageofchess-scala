@@ -32,7 +32,7 @@ object Main {
 
     val app = currentPath match {
       case "/"      => HomePage.render
-      case "/game"  => Game.render
+      case "/game"  => GamePage.render
       case _        => NotFoundPage.render
     }
 

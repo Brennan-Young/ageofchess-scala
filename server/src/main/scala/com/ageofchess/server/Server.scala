@@ -54,10 +54,29 @@ object Server extends MainRoutes {
   val connections = collection.mutable.ListBuffer.empty[cask.WsChannelActor]
   val gameState = collection.mutable.Map(defaultPieces.toSeq: _*)
 
+  val players = collection.mutable.Map.empty[String, cask.WsChannelActor] 
+
   def applyMove(state: collection.mutable.Map[Location, RenderablePiece], move: Move): Unit = {
     state.get(move.from).foreach { piece =>
       state.remove(move.from)
       state.update(move.to, piece)
+    }
+  }
+
+  @cask.websocket("/gameState2")
+  def gameState2Socket(): cask.WebsocketResult = {
+    cask.WsHandler { channel =>
+      val playerId = java.util.UUID.randomUUID().toString
+      players += (playerId -> channel)
+
+      println(s"Player connected: $playerId")
+
+      cask.WsActor {
+        case cask.Ws.Text(msg) => println(s"Received message from $playerId: $msg")
+        case cask.Ws.Close(_, _) =>
+          players -= playerId
+          println(s"Player disconnected: $playerId")
+      }  
     }
   }
 

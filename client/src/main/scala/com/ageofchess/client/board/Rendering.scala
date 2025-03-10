@@ -6,6 +6,8 @@ import com.ageofchess.shared.piece._
 import com.ageofchess.client.api.Sockets
 import org.scalajs.dom
 
+import upickle.default._ // remove later
+
 object Rendering {
 
   val selectedPiece: Var[Option[Location]] = Var(None)
@@ -56,6 +58,7 @@ object Rendering {
         selectedPiece.now() match {
           case Some((selectedPosition)) => {
             Sockets.sendMove(Move(selectedPosition, location))
+            Sockets.gameState2Socket.send(write(Move(selectedPosition, location)))
             piecesVar.update { pieces =>
               pieces.get(selectedPosition).map { pieceToMove =>
                 pieces - selectedPosition + (location -> pieceToMove)  
@@ -82,6 +85,7 @@ object Rendering {
           }.getOrElse(pieces) 
         }
         Sockets.sendMove(Move(selectedPosition, location))
+        Sockets.gameState2Socket.send(write(Move(selectedPosition, location)))
         selectedPiece.set(None)
       }
       case Some(_) => selectedPiece.set(None)

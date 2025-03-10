@@ -11,7 +11,7 @@ import org.scalajs.dom
 import com.ageofchess.client.api.Queries
 import com.ageofchess.client.api.Sockets
 
-object Game {
+object GamePage {
   val piecesVar: Var[Map[Location, RenderablePiece]] = Var(Map())
 
   Sockets.gameStateSocket.onmessage = event => {
