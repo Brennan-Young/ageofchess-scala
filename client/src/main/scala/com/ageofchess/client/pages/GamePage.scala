@@ -11,6 +11,14 @@ import org.scalajs.dom
 import com.ageofchess.client.api.Queries
 import com.ageofchess.client.api.Sockets
 
+class GamePageClass(val gameId: String) { // todo: rename to GamePage
+  private val piecesVar: Var[Map[Location, RenderablePiece]]] = Var(Map())
+
+  private val socket = new Sockets.GameSocket(gameId)
+
+  
+}
+
 object GamePage {
   val piecesVar: Var[Map[Location, RenderablePiece]] = Var(Map())
 
