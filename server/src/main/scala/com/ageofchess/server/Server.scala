@@ -4,6 +4,8 @@ import cask.{MainRoutes, Response}
 import upickle.default._
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.piece._
+import com.ageofchess.shared.game._
+import collection.mutable
 
 object Server extends MainRoutes {
   @cask.staticFiles("/js/")
@@ -60,6 +62,69 @@ object Server extends MainRoutes {
     state.get(move.from).foreach { piece =>
       state.remove(move.from)
       state.update(move.to, piece)
+    }
+  }
+
+  val games = collection.mutable.Map.empty[String, Game]
+  val pendingGames = collection.mutable.Map.empty[String, PendingGame]
+  val playerChannels = collection.mutable.Map.empty[String, cask.WsChannelActor]
+
+  @cask.websocket("/game/:gameId")
+  def gameSocket(gameId: String): cask.WebsocketResult = {
+    cask.WsHandler { channel =>
+      games.get(gameId) match {
+        case Some(game) => handleMatchedGame(game, channel)
+        case None => {
+          pendingGames.get(gameId) match {
+            case Some(game) => matchGame(game, channel)
+            case None => createGame(gameId, channel)
+          }
+        }
+      }
+    }
+  }
+
+  def createGame(gameId: String, channel: cask.WsChannelActor) = {
+    val playerId = java.util.UUID.randomUUID().toString
+    val pending = PendingGame(gameId, playerId)
+    pendingGames.update(gameId, pending)
+    playerChannels.update(playerId, channel)
+
+    cask.WsActor {
+      case _ =>
+    }
+  }
+
+  import scala.util.Random
+  def matchGame(pendingGame: PendingGame, channel: cask.WsChannelActor) = {
+    val playerId = java.util.UUID.randomUUID().toString
+    val coin = Random.nextInt(2)
+
+    val (p1, p2) = if (coin == 1) (pendingGame.player1, playerId) else (playerId, pendingGame.player1)
+    val player1 = Player(p1, White)
+    val player2 = Player(p2, Black)
+
+    val game = Game(
+      pendingGame.gameId,
+      player1,
+      player2,
+      defaultBoard,
+      mutable.Map(defaultPieces.toSeq: _*),
+      true
+    )
+
+    games.update(pendingGame.gameId, game)
+    playerChannels.update(playerId, channel)
+
+    cask.WsActor {
+      case _ =>
+    }
+  }
+
+  def handleMatchedGame(game: Game, channel: cask.WsChannelActor) = {
+    cask.WsActor {
+      case cask.Ws.Text(message) => // TODO: figure out what messages can be received
+      // for now something simple? A message consisting of the playerId and their move
     }
   }
 

@@ -4,6 +4,7 @@ import com.raquo.laminar.api.L._
 import com.ageofchess.client.board.Rendering
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.piece._
+import com.ageofchess.shared.game._
 import scala.concurrent.Future
 import upickle.default._
 import scala.concurrent.ExecutionContext
@@ -12,9 +13,16 @@ import com.ageofchess.client.api.Queries
 import com.ageofchess.client.api.Sockets
 
 class GamePageClass(val gameId: String) { // todo: rename to GamePage
-  private val piecesVar: Var[Map[Location, RenderablePiece]]] = Var(Map())
+
+   // TODO: Might be better as a Vector[Vector[(Location, Var[RenderablePiece])]], as a grid.  
+   // We'd be storing a bunch more in memory, but each square can evolve independently rather 
+   // than updating the entire Var every time a piece moves.
+  private val piecesVar: Var[Map[Location, RenderablePiece]] = Var(Map())
 
   private val socket = new Sockets.GameSocket(gameId)
+
+  // val player1: Var[Player] = Var(None)
+  // val player2: Var[Player] = Var(None)
 
   
 }
