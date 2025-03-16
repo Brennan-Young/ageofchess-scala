@@ -117,7 +117,9 @@ object Server extends MainRoutes {
     playerChannels.update(playerId, channel)
 
     cask.WsActor {
-      case _ =>
+      case _ => {
+        
+      }
     }
   }
 
