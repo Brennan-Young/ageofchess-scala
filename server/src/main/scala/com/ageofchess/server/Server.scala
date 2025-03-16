@@ -5,6 +5,7 @@ import upickle.default._
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.piece._
 import com.ageofchess.shared.game._
+import com.ageofchess.shared.Messages._
 import collection.mutable
 
 object Server extends MainRoutes {
@@ -34,6 +35,21 @@ object Server extends MainRoutes {
 
   @cask.get("/game")
   def serveGamePage(vscodeBrowserReqId: Option[String] = None): Response[String] = {
+    cask.Response(
+      """<!DOCTYPE html>
+        <html>
+        <head>
+          <title>Age of Chess - Game</title>
+          <script type="module" src="/js/main.js"></script>
+        </head>
+        <body></body>
+      </html>""",
+      headers = Seq("Content-Type" -> "text/html")
+    )
+  }
+
+  @cask.get("/game/:gameId")
+  def serveGamePage2(gameId: String, vscodeBrowserReqId: Option[String] = None): Response[String] = {
     cask.Response(
       """<!DOCTYPE html>
         <html>
@@ -90,6 +106,8 @@ object Server extends MainRoutes {
     pendingGames.update(gameId, pending)
     playerChannels.update(playerId, channel)
 
+    println(s"Player connected: $playerId")
+
     cask.WsActor {
       case _ =>
     }
@@ -100,16 +118,20 @@ object Server extends MainRoutes {
     val playerId = java.util.UUID.randomUUID().toString
     val coin = Random.nextInt(2)
 
+    println(s"Second player connected: $playerId")
+
     val (p1, p2) = if (coin == 1) (pendingGame.player1, playerId) else (playerId, pendingGame.player1)
     val player1 = Player(p1, White)
     val player2 = Player(p2, Black)
+    val board = defaultBoard2
+    val pieces = mutable.Map(defaultPieces.toSeq: _*)
 
     val game = Game(
       pendingGame.gameId,
       player1,
       player2,
-      defaultBoard,
-      mutable.Map(defaultPieces.toSeq: _*),
+      board,
+      pieces,
       true
     )
 
@@ -117,8 +139,17 @@ object Server extends MainRoutes {
     playerChannels.update(playerId, channel)
 
     cask.WsActor {
-      case _ => {
-        
+      case cask.Ws.Text(msg) => {
+        println(msg)
+        val message = write(InitializeBoard(board, pieces))
+
+        playerChannels.get(p1).foreach { connection =>
+          connection.send(cask.Ws.Text(message))
+        }
+
+        playerChannels.get(p2).foreach { connection =>
+          connection.send(cask.Ws.Text(message))  
+        }
       }
     }
   }

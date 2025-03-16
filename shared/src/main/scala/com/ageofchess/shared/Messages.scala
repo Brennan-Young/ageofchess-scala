@@ -1,12 +1,19 @@
 package com.ageofchess.shared
 
 import upickle.default.{ReadWriter, readwriter, macroRW}
+import com.ageofchess.shared.board.Board
+import com.ageofchess.shared.piece.{Location, RenderablePiece}
+import collection.mutable
 
 object Messages {
-  sealed trait MessageType
-  case object InitBoard extends MessageType
 
-  case class Message(
-    messageType: MessageType
-  )
+  sealed trait GameMessage
+  object GameMessage {
+    implicit val rw: ReadWriter[GameMessage] = macroRW
+  }
+
+  case class InitializeBoard(board: Board, pieces: mutable.Map[Location, RenderablePiece]) extends GameMessage
+  object InitializeBoard {
+    implicit val rw: ReadWriter[InitializeBoard] = macroRW
+  }
 }

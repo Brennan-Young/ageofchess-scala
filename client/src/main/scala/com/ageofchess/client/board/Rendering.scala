@@ -12,6 +12,29 @@ object Rendering {
 
   val selectedPiece: Var[Option[Location]] = Var(None)
 
+  def renderState2(
+    boardState: Vector[Vector[(SquareType, Option[RenderablePiece])]],
+    piecesVar: Var[Map[Location, RenderablePiece]]
+  ): HtmlElement = {
+
+    val numColumns = boardState.headOption.map(_.size).getOrElse(0)
+
+    div(
+      cls := "board",
+      styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
+      boardState.zipWithIndex.map { case (row, rIdx) =>
+        div(
+          cls := "board-row",
+          row.zipWithIndex.map { case ((square, piece), cIdx) =>
+            val squareColor = if ((rIdx + cIdx) % 2 == 0) Grass else Dirt
+            val renderableSquare = RenderableSquare(squareColor, square)
+            renderSquare(Location(rIdx, cIdx), renderableSquare, piece, piecesVar)  
+          }
+        )  
+      }
+    )
+  }
+
   def renderState(
     boardState: Vector[Vector[(RenderableSquare, Option[RenderablePiece])]],
     piecesVar: Var[Map[Location, RenderablePiece]]
