@@ -4,15 +4,23 @@ import com.raquo.laminar.api.L._
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.piece._
 import com.ageofchess.client.api.Sockets
+import com.ageofchess.client.gamestate.ClientGameState
 import org.scalajs.dom
 
 import upickle.default._ // remove later
 
 object Rendering {
 
+  // def render(
+  //   gameState: ClientGameState
+  // ): HtmlElement = {
+
+  // }
+
+
   val selectedPiece: Var[Option[Location]] = Var(None)
 
-  def renderState2(
+  def renderState(
     boardState: Vector[Vector[(SquareType, Option[RenderablePiece])]],
     piecesVar: Var[Map[Location, RenderablePiece]]
   ): HtmlElement = {
@@ -35,26 +43,26 @@ object Rendering {
     )
   }
 
-  def renderState(
-    boardState: Vector[Vector[(RenderableSquare, Option[RenderablePiece])]],
-    piecesVar: Var[Map[Location, RenderablePiece]]
-  ): HtmlElement = {
+  // def renderState(
+  //   boardState: Vector[Vector[(RenderableSquare, Option[RenderablePiece])]],
+  //   piecesVar: Var[Map[Location, RenderablePiece]]
+  // ): HtmlElement = {
 
-    val numColumns = boardState.headOption.map(_.size).getOrElse(0)
+  //   val numColumns = boardState.headOption.map(_.size).getOrElse(0)
 
-    div(
-      cls := "board",
-      styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
-      boardState.zipWithIndex.map { case (row, rIdx) =>
-        div(
-          cls := "board-row",
-          row.zipWithIndex.map { case ((square, piece), cIdx) =>
-            renderSquare(Location(rIdx, cIdx), square, piece, piecesVar)  
-          }
-        )  
-      }
-    )
-  }
+  //   div(
+  //     cls := "board",
+  //     styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
+  //     boardState.zipWithIndex.map { case (row, rIdx) =>
+  //       div(
+  //         cls := "board-row",
+  //         row.zipWithIndex.map { case ((square, piece), cIdx) =>
+  //           renderSquare(Location(rIdx, cIdx), square, piece, piecesVar)  
+  //         }
+  //       )  
+  //     }
+  //   )
+  // }
 
   def renderSquare(
     location: Location,

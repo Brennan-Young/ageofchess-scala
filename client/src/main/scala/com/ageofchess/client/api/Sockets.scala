@@ -40,7 +40,15 @@ object Sockets {
     def sendMove(move: Move): Unit = {
       socket.send(write(move))
     }
+  }
 
+  def buildSocket(gameId: String) = {
+    val ws = if (dom.window.location.protocol == "https:") {
+      s"wss://${dom.window.location.host}/game/${gameId}"
+    } else {
+      s"ws://${dom.window.location.host}/game/${gameId}"
+    }
 
+    new dom.WebSocket(ws)
   }
 }

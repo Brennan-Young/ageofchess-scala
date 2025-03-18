@@ -2,6 +2,7 @@ package com.ageofchess.shared
 
 import upickle.default.{ReadWriter, readwriter, macroRW}
 import com.ageofchess.shared.board.Board
+import com.ageofchess.shared.game.Player
 import com.ageofchess.shared.piece.{Location, RenderablePiece}
 import collection.mutable
 
@@ -15,5 +16,10 @@ object Messages {
   case class InitializeBoard(board: Board, pieces: mutable.Map[Location, RenderablePiece]) extends GameMessage
   object InitializeBoard {
     implicit val rw: ReadWriter[InitializeBoard] = macroRW
+  }
+
+  case class AssignPlayers(player: Player, opponent: Player) extends GameMessage
+  object AssignPlayers {
+    implicit val rw: ReadWriter[AssignPlayers] = macroRW
   }
 }

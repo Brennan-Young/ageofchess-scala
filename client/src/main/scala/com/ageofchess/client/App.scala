@@ -32,10 +32,9 @@ object Main {
 
     val app = currentPath match {
       case "/"      => HomePage.render
-      case "/game"  => GamePage.render
       case path if path.startsWith("/game/") => {
         val gameId = path.stripPrefix("/game/")
-        new GamePageClass(gameId).render
+        new GamePage(gameId).render
       }
       case _        => NotFoundPage.render
     }
