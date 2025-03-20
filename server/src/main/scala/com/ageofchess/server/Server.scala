@@ -89,7 +89,7 @@ object Server extends MainRoutes {
   def gameSocket(gameId: String): cask.WebsocketResult = {
     cask.WsHandler { channel =>
       games.get(gameId) match {
-        case Some(game) => handleMatchedGame(game, channel)
+        case Some(game) => // TODO: send some sort of "game full" message
         case None => {
           pendingGames.get(gameId) match {
             case Some(game) => matchGame(game, channel)
@@ -97,24 +97,47 @@ object Server extends MainRoutes {
           }
         }
       }
+
+      cask.WsActor {
+        case cask.Ws.Text(msg) => {
+          games.get(gameId).foreach(game => handleMessage(game, msg))
+        }
+      }
     }
   }
 
-  def createGame(gameId: String, channel: cask.WsChannelActor) = {
+  def handleMessage(game: Game, message: String): Unit = {
+    val parsedMessage = read[ClientMessage](message)
+    parsedMessage match {
+      case ConnectPlayer(p) => {
+        println("debug")
+        val serverMessage = InitializeBoard(game.board, game.pieces)
+        broadcastToPlayers(game, write(serverMessage))
+      }
+    }
+  }
+
+  def broadcastToPlayers(game: Game, message: String) = {
+    playerChannels.get(game.white.id).foreach { connection =>
+      connection.send(cask.Ws.Text(message))
+    }
+
+    playerChannels.get(game.black.id).foreach { connection =>
+      connection.send(cask.Ws.Text(message))  
+    }
+  }
+ 
+  def createGame(gameId: String, channel: cask.WsChannelActor): Unit = {
     val playerId = java.util.UUID.randomUUID().toString
     val pending = PendingGame(gameId, playerId)
     pendingGames.update(gameId, pending)
     playerChannels.update(playerId, channel)
 
-    println(s"Player connected: $playerId")
-
-    cask.WsActor {
-      case _ =>
-    }
+    println(s"Player connected : $playerId")
   }
 
   import scala.util.Random
-  def matchGame(pendingGame: PendingGame, channel: cask.WsChannelActor) = {
+  def matchGame(pendingGame: PendingGame, channel: cask.WsChannelActor): Unit = {
     val playerId = java.util.UUID.randomUUID().toString
     val coin = Random.nextInt(2)
 
@@ -137,28 +160,7 @@ object Server extends MainRoutes {
 
     games.update(pendingGame.gameId, game)
     playerChannels.update(playerId, channel)
-
-    cask.WsActor {
-      case cask.Ws.Text(msg) => {
-        println(msg)
-        val message = write(InitializeBoard(board, pieces))
-
-        playerChannels.get(p1).foreach { connection =>
-          connection.send(cask.Ws.Text(message))
-        }
-
-        playerChannels.get(p2).foreach { connection =>
-          connection.send(cask.Ws.Text(message))  
-        }
-      }
-    }
-  }
-
-  def handleMatchedGame(game: Game, channel: cask.WsChannelActor) = {
-    cask.WsActor {
-      case cask.Ws.Text(message) => // TODO: figure out what messages can be received
-      // for now something simple? A message consisting of the playerId and their move
-    }
+    pendingGames.remove(pendingGame.gameId)
   }
 
   @cask.websocket("/gameState2")

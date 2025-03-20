@@ -22,4 +22,14 @@ object Messages {
   object AssignPlayers {
     implicit val rw: ReadWriter[AssignPlayers] = macroRW
   }
+
+  sealed trait ClientMessage
+  object ClientMessage {
+    implicit val rw: ReadWriter[ClientMessage] = macroRW
+  }
+
+  case class ConnectPlayer(placeholder: String) extends ClientMessage // add player IDs later
+  object ConnectPlayer {
+    implicit val rw: ReadWriter[ConnectPlayer] = macroRW
+  }
 }

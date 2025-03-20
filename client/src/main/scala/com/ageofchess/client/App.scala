@@ -16,6 +16,7 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 import com.ageofchess.client.board.Rendering
 import com.ageofchess.client.pages._
+import com.ageofchess.client.gamestate.ClientGameState
 
 object Main {
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
@@ -34,7 +35,8 @@ object Main {
       case "/"      => HomePage.render
       case path if path.startsWith("/game/") => {
         val gameId = path.stripPrefix("/game/")
-        new GamePage(gameId).render
+        val gameState = new ClientGameState(gameId)
+        new GamePage(gameId, gameState).render
       }
       case _        => NotFoundPage.render
     }

@@ -9,7 +9,9 @@ import com.ageofchess.shared.Messages._
 import upickle.default._
 
 class ClientGameState(val gameId: String) {
-
+  // TODO: Might be better as a Vector[Vector[(Location, Var[RenderablePiece])]], as a grid.  
+  // We'd be storing a bunch more in memory, but each square can evolve independently rather 
+  // than updating the entire Var every time a piece moves.
   val piecesVar: Var[Map[Location, RenderablePiece]] = Var(Map())
   val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
   val playerVar: Var[Option[Player]] = Var(None)
@@ -17,10 +19,12 @@ class ClientGameState(val gameId: String) {
   val playerToMoveVar: Var[Option[Player]] = Var(None) 
   val selectedPiece: Var[Option[Location]] = Var(None)
 
+  // TODO: Not part of the game state, it's just how the client communicates with the server.
+  // Should be moved out of this class or the class should be renamed
   val socket = Sockets.buildSocket(gameId)
 
   socket.onopen = _ => {
-    socket.send("new connection")
+    socket.send(write(ConnectPlayer("placeholder")))
   }
 
   socket.onmessage = event => {
