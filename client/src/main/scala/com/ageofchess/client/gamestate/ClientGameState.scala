@@ -34,7 +34,7 @@ class ClientGameState(val gameId: String) {
       case InitializeBoard(board, pieces) => {
         println("Initializing board")
         boardVar.set(Some(board.squares))
-        piecesVar.set(pieces.toMap)
+        piecesVar.set(pieces)
       }
       case AssignPlayers(player, opponent) => {
         println("Assigning players")
@@ -42,6 +42,10 @@ class ClientGameState(val gameId: String) {
         opponentVar.set(Some(opponent))
         val startingPlayer = if (player.color == White) player else opponent
         playerToMoveVar.set(Some(startingPlayer))
+      }
+      case UpdatePieces(pieces) => {
+        println("Updating board state")
+        piecesVar.set(pieces)
       }
       case _ =>
     }

@@ -33,23 +33,8 @@ object Server extends MainRoutes {
     )
   }
 
-  @cask.get("/game")
-  def serveGamePage(vscodeBrowserReqId: Option[String] = None): Response[String] = {
-    cask.Response(
-      """<!DOCTYPE html>
-        <html>
-        <head>
-          <title>Age of Chess - Game</title>
-          <script type="module" src="/js/main.js"></script>
-        </head>
-        <body></body>
-      </html>""",
-      headers = Seq("Content-Type" -> "text/html")
-    )
-  }
-
   @cask.get("/game/:gameId")
-  def serveGamePage2(gameId: String, vscodeBrowserReqId: Option[String] = None): Response[String] = {
+  def serveGamePage(gameId: String, vscodeBrowserReqId: Option[String] = None): Response[String] = {
     cask.Response(
       """<!DOCTYPE html>
         <html>
@@ -61,24 +46,6 @@ object Server extends MainRoutes {
       </html>""",
       headers = Seq("Content-Type" -> "text/html")
     )
-  }
-
-  @cask.get("/api/board")
-  def getBoard(): ujson.Value = {
-    val board = defaultBoard
-    writeJs(board)
-  }
-
-  val connections = collection.mutable.ListBuffer.empty[cask.WsChannelActor]
-  val gameState = collection.mutable.Map(defaultPieces.toSeq: _*)
-
-  val players = collection.mutable.Map.empty[String, cask.WsChannelActor] 
-
-  def applyMove(state: collection.mutable.Map[Location, RenderablePiece], move: Move): Unit = {
-    state.get(move.from).foreach { piece =>
-      state.remove(move.from)
-      state.update(move.to, piece)
-    }
   }
 
   val games = collection.mutable.Map.empty[String, Game]
@@ -107,11 +74,19 @@ object Server extends MainRoutes {
   }
 
   def handleMessage(game: Game, message: String): Unit = {
+    println(message)
     val parsedMessage = read[ClientMessage](message)
     parsedMessage match {
       case ConnectPlayer(p) => {
-        println("debug")
-        val serverMessage = InitializeBoard(game.board, game.pieces)
+        val serverMessage = InitializeBoard(game.board, game.pieces.toMap)
+        broadcastToPlayers(game, write(serverMessage))
+      }
+      case MovePiece(from, to) => {
+        game.pieces.get(from).foreach { piece =>
+          game.pieces.remove(from)
+          game.pieces.update(to, piece)
+        }
+        val serverMessage = UpdatePieces(game.pieces.toMap)
         broadcastToPlayers(game, write(serverMessage))
       }
     }
@@ -162,42 +137,6 @@ object Server extends MainRoutes {
     playerChannels.update(playerId, channel)
     pendingGames.remove(pendingGame.gameId)
   }
-
-  @cask.websocket("/gameState2")
-  def gameState2Socket(): cask.WebsocketResult = {
-    cask.WsHandler { channel =>
-      val playerId = java.util.UUID.randomUUID().toString
-      players += (playerId -> channel)
-
-      println(s"Player connected: $playerId")
-
-      cask.WsActor {
-        case cask.Ws.Text(msg) => println(s"Received message from $playerId: $msg")
-        case cask.Ws.Close(_, _) =>
-          players -= playerId
-          println(s"Player disconnected: $playerId")
-      }  
-    }
-  }
-
-  @cask.websocket("/gameState")
-  def gameStateSocket(): cask.WebsocketResult = {
-    cask.WsHandler { channel =>
-      connections += channel
-      cask.WsActor {
-        case cask.Ws.Text(message) =>
-          val move = read[Move](message)
-          applyMove(gameState, move)
-          gameState.update(Location(0, 2), RenderablePiece(White, Knight))
-          broadcastState()
-      }
-    }
-  }
-
-  def broadcastState(): Unit = {
-    val stateJson = write(gameState)
-    connections.foreach(_.send(cask.Ws.Text(stateJson)))
-  }
-
+  
   initialize()
 }

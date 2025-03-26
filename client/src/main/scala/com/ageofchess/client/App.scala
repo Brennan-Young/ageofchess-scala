@@ -14,7 +14,6 @@ import upickle.default._
 import ujson.{read => ujsonread}
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
-import com.ageofchess.client.board.Rendering
 import com.ageofchess.client.pages._
 import com.ageofchess.client.gamestate.ClientGameState
 

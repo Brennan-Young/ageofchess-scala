@@ -13,7 +13,7 @@ object Messages {
     implicit val rw: ReadWriter[GameMessage] = macroRW
   }
 
-  case class InitializeBoard(board: Board, pieces: mutable.Map[Location, RenderablePiece]) extends GameMessage
+  case class InitializeBoard(board: Board, pieces: Map[Location, RenderablePiece]) extends GameMessage
   object InitializeBoard {
     implicit val rw: ReadWriter[InitializeBoard] = macroRW
   }
@@ -23,13 +23,27 @@ object Messages {
     implicit val rw: ReadWriter[AssignPlayers] = macroRW
   }
 
+  case class UpdatePieces(pieces: Map[Location, RenderablePiece]) extends GameMessage
+  object UpdatePieces {
+    implicit val rw: ReadWriter[UpdatePieces] = macroRW
+  }
+
   sealed trait ClientMessage
   object ClientMessage {
     implicit val rw: ReadWriter[ClientMessage] = macroRW
+    // implicit val rw: ReadWriter[ClientMessage] = ReadWriter.merge(
+    //   macroRW[ConnectPlayer],
+    //   macroRW[MovePiece]
+    // )
   }
 
   case class ConnectPlayer(placeholder: String) extends ClientMessage // add player IDs later
   object ConnectPlayer {
     implicit val rw: ReadWriter[ConnectPlayer] = macroRW
+  }
+
+  case class MovePiece(from: Location, to: Location) extends ClientMessage // TODO: playerIds, piece movement aren't strictly needed yet but perhaps have benefits?
+  object MovePiece {
+    implicit val rw: ReadWriter[MovePiece] = macroRW
   }
 }

@@ -64,11 +64,11 @@ package object piece {
     implicit val rw: ReadWriter[Location] = macroRW
   }
 
-  case class Move(from: Location, to: Location)
+  // case class Move(from: Location, to: Location)
 
-  object Move {
-    implicit val rw: ReadWriter[Move] = macroRW
-  }
+  // object Move {
+  //   implicit val rw: ReadWriter[Move] = macroRW
+  // }
 
   val defaultPieces: Map[Location, RenderablePiece] = Map(
     Location(0, 0) -> RenderablePiece(White, King),
