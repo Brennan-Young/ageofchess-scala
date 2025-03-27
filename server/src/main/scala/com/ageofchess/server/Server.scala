@@ -80,6 +80,15 @@ object Server extends MainRoutes {
       case ConnectPlayer(p) => {
         val serverMessage = InitializeBoard(game.board, game.pieces.toMap)
         broadcastToPlayers(game, write(serverMessage))
+        // TODO: extract this out
+        playerChannels.get(game.white.id).foreach { connection =>
+          val assignments = AssignPlayers(game.white, game.black)
+          connection.send(cask.Ws.Text(write(assignments)))
+        }
+        playerChannels.get(game.black.id).foreach { connection =>
+          val assignments = AssignPlayers(game.black, game.white)
+          connection.send(cask.Ws.Text(write(assignments)))  
+        }
       }
       case MovePiece(from, to) => {
         game.pieces.get(from).foreach { piece =>

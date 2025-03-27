@@ -63,4 +63,9 @@ class ClientGameState(val gameId: String) {
     }
     case _ => None
   }
+
+  val isPlayerTurnSignal: Signal[Boolean] = Signal.combine(playerVar.signal, playerToMoveVar.signal).map {
+    case (Some(player), Some(playerToMove)) => if (player == playerToMove) true else false
+    case _ => false
+  }
 }

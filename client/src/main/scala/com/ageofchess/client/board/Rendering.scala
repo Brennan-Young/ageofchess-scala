@@ -39,6 +39,19 @@ class GameStateRenderer(val gameState: ClientGameState) {
     piecesVar: Var[Map[Location, Piece]]
   ): HtmlElement = {
 
+    //  TODO: DragEvent is used for both start and end of drag.  We can potentially make this more specific to our application
+    // and make it EventBus[Location]
+    val dragBus = new EventBus[dom.DragEvent]
+    val dragEvents = dragBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
+    val dragEffects = Observer[(dom.DragEvent, Boolean)](onNext = { case (e, canMove) =>
+      println(e, canMove, gameState.playerVar.now(), gameState.playerToMoveVar.now())
+      if (canMove) {
+        gameState.selectedPiece.set(Some(location))
+      } else {
+        e.preventDefault
+      }
+    })
+
     div(
       cls := "board-square",
       backgroundImage := s"url(/assets/${square.asset})",
@@ -46,9 +59,19 @@ class GameStateRenderer(val gameState: ClientGameState) {
         img(
           src := s"/assets/pieces/${p.asset}",
           cls := "piece",
-          onDragStart --> { _ =>
-            gameState.selectedPiece.set(Some(location))
-          }
+          // TODO: this doesn't work remotely as intended, need to read up on animations more
+          // styleAttr := s"transform: translate(${location.y * 50}px, ${location.x}px);",
+          onDragStart --> dragBus.writer,
+          dragEvents --> dragEffects
+          // onDragStart --> { _ =>
+          //   gameState.selectedPiece.set(Some(location))
+          // }
+          // also works instead of the dragBus - look into this more
+          // onDragStart.compose(_.withCurrentValueOf(gameState.isPlayerTurnSignal).collect {
+          //   case (e, true) => e
+          // }) --> { _ =>
+          //   gameState.selectedPiece.set(Some(location))
+          // }
         )
       },
       onClick --> { movePieceOnClick(location, piece, piecesVar) },
