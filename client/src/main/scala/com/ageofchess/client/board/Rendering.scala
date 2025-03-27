@@ -44,9 +44,11 @@ class GameStateRenderer(val gameState: ClientGameState) {
     val dragBus = new EventBus[dom.DragEvent]
     val dragEvents = dragBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
     val dragEffects = Observer[(dom.DragEvent, Boolean)](onNext = { case (e, canMove) =>
-      println(e, canMove, gameState.playerVar.now(), gameState.playerToMoveVar.now())
       if (canMove) {
         gameState.selectedPiece.set(Some(location))
+        // gameState.playerToMoveVar.set(gameState.opponentVar.now())
+        gameState.moveTurnBus.emit()
+        println(gameState.isPlayerTurnSignal)
       } else {
         e.preventDefault
       }

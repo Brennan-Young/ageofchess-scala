@@ -41,7 +41,11 @@ class ClientGameState(val gameId: String) {
         playerVar.set(Some(player))
         opponentVar.set(Some(opponent))
         val startingPlayer = if (player.color == White) player else opponent
-        playerToMoveVar.set(Some(startingPlayer))
+        // TODO: obviously bad code, fix this
+        if (startingPlayer == player) moveTurnBus.emit() else {
+          moveTurnBus.emit()
+          moveTurnBus.emit()
+        }
       }
       case UpdatePieces(pieces) => {
         println("Updating board state")
@@ -64,7 +68,12 @@ class ClientGameState(val gameId: String) {
     case _ => None
   }
 
-  val isPlayerTurnSignal: Signal[Boolean] = Signal.combine(playerVar.signal, playerToMoveVar.signal).map {
+  val moveTurnBus = new EventBus[Unit]
+  val playerToMoveSignal: Signal[Option[Player]] = moveTurnBus.events.scanLeft(None: Option[Player]) { case (player, _) =>
+    if (player == playerVar.now()) opponentVar.now() else playerVar.now()  
+  }
+
+  val isPlayerTurnSignal: Signal[Boolean] = Signal.combine(playerVar.signal, playerToMoveSignal).map {
     case (Some(player), Some(playerToMove)) => if (player == playerToMove) true else false
     case _ => false
   }
