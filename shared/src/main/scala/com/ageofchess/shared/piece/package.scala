@@ -50,12 +50,12 @@ package object piece {
   case object Queen extends PieceType { override def id: String = "queen" }
   case object King extends PieceType { override def id: String = "king" }
 
-  case class RenderablePiece(color: Color, pieceType: PieceType) {
+  case class Piece(color: Color, pieceType: PieceType) {
     def asset: String = s"${color.id}_${pieceType.id}.png"
   }
 
-  object RenderablePiece {
-    implicit val rw: ReadWriter[RenderablePiece] = macroRW
+  object Piece {
+    implicit val rw: ReadWriter[Piece] = macroRW
   }
 
   case class Location(x: Int, y: Int)
@@ -64,14 +64,8 @@ package object piece {
     implicit val rw: ReadWriter[Location] = macroRW
   }
 
-  // case class Move(from: Location, to: Location)
-
-  // object Move {
-  //   implicit val rw: ReadWriter[Move] = macroRW
-  // }
-
-  val defaultPieces: Map[Location, RenderablePiece] = Map(
-    Location(0, 0) -> RenderablePiece(White, King),
-    Location(1, 3) -> RenderablePiece(Black, King)
+  val defaultPieces: Map[Location, Piece] = Map(
+    Location(0, 0) -> Piece(White, King),
+    Location(1, 3) -> Piece(Black, King)
   )
 }

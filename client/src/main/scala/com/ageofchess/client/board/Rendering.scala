@@ -12,7 +12,7 @@ import upickle.default._ // remove later
 
 class GameStateRenderer(val gameState: ClientGameState) {
   def render(
-    boardState: Vector[Vector[(SquareType, Option[RenderablePiece])]]
+    boardState: Vector[Vector[(SquareType, Option[Piece])]]
   ): HtmlElement = {
     val numColumns = boardState.headOption.map(_.size).getOrElse(0)
 
@@ -35,8 +35,8 @@ class GameStateRenderer(val gameState: ClientGameState) {
   def renderSquare(
     location: Location,
     square: RenderableSquare,
-    piece: Option[RenderablePiece],
-    piecesVar: Var[Map[Location, RenderablePiece]]
+    piece: Option[Piece],
+    piecesVar: Var[Map[Location, Piece]]
   ): HtmlElement = {
 
     div(
@@ -72,8 +72,8 @@ class GameStateRenderer(val gameState: ClientGameState) {
 
   def movePieceOnClick(
     location: Location,
-    piece: Option[RenderablePiece],
-    piecesVar: Var[Map[Location, RenderablePiece]]
+    piece: Option[Piece],
+    piecesVar: Var[Map[Location, Piece]]
   ): dom.Event => Unit = { _ =>
     gameState.selectedPiece.now() match {
       case Some(selectedPosition) if selectedPosition != location => {

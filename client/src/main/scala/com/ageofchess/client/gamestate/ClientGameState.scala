@@ -9,10 +9,10 @@ import com.ageofchess.shared.Messages._
 import upickle.default._
 
 class ClientGameState(val gameId: String) {
-  // TODO: Might be better as a Vector[Vector[(Location, Var[RenderablePiece])]], as a grid.  
+  // TODO: Might be better as a Vector[Vector[(Location, Var[Piece])]], as a grid.  
   // We'd be storing a bunch more in memory, but each square can evolve independently rather 
   // than updating the entire Var every time a piece moves.
-  val piecesVar: Var[Map[Location, RenderablePiece]] = Var(Map())
+  val piecesVar: Var[Map[Location, Piece]] = Var(Map())
   val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
   val playerVar: Var[Option[Player]] = Var(None)
   val opponentVar: Var[Option[Player]] = Var(None)

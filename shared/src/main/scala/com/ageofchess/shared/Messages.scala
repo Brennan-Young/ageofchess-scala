@@ -3,7 +3,7 @@ package com.ageofchess.shared
 import upickle.default.{ReadWriter, readwriter, macroRW}
 import com.ageofchess.shared.board.Board
 import com.ageofchess.shared.game.Player
-import com.ageofchess.shared.piece.{Location, RenderablePiece}
+import com.ageofchess.shared.piece.{Location, Piece}
 import collection.mutable
 
 object Messages {
@@ -13,7 +13,7 @@ object Messages {
     implicit val rw: ReadWriter[GameMessage] = macroRW
   }
 
-  case class InitializeBoard(board: Board, pieces: Map[Location, RenderablePiece]) extends GameMessage
+  case class InitializeBoard(board: Board, pieces: Map[Location, Piece]) extends GameMessage
   object InitializeBoard {
     implicit val rw: ReadWriter[InitializeBoard] = macroRW
   }
@@ -23,7 +23,7 @@ object Messages {
     implicit val rw: ReadWriter[AssignPlayers] = macroRW
   }
 
-  case class UpdatePieces(pieces: Map[Location, RenderablePiece]) extends GameMessage
+  case class UpdatePieces(pieces: Map[Location, Piece]) extends GameMessage
   object UpdatePieces {
     implicit val rw: ReadWriter[UpdatePieces] = macroRW
   }
@@ -31,10 +31,6 @@ object Messages {
   sealed trait ClientMessage
   object ClientMessage {
     implicit val rw: ReadWriter[ClientMessage] = macroRW
-    // implicit val rw: ReadWriter[ClientMessage] = ReadWriter.merge(
-    //   macroRW[ConnectPlayer],
-    //   macroRW[MovePiece]
-    // )
   }
 
   case class ConnectPlayer(placeholder: String) extends ClientMessage // add player IDs later

@@ -17,7 +17,7 @@ package object game {
     white: Player,
     black: Player,
     board: Board,
-    pieces: mutable.Map[Location, RenderablePiece],
+    pieces: mutable.Map[Location, Piece],
     whiteToMove: Boolean
   )
 
