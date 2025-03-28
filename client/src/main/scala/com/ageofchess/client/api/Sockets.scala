@@ -25,22 +25,18 @@ object Sockets {
   //   gameStateSocket.send(write(move))
   // }
 
-  // class GameSocket(
-  //   gameId: String
-  // ) {
+  class GameSocket(
+    gameId: String
+  ) {
 
-  //   val ws = if (dom.window.location.protocol == "https:") {
-  //     s"wss://${dom.window.location.host}/game/${gameId}"
-  //   } else {
-  //     s"ws://${dom.window.location.host}/game/${gameId}"
-  //   }
+    val ws = if (dom.window.location.protocol == "https:") {
+      s"wss://${dom.window.location.host}/game/${gameId}"
+    } else {
+      s"ws://${dom.window.location.host}/game/${gameId}"
+    }
 
-  //   val socket = new dom.WebSocket(ws)
-
-  //   def sendMove(move: Move): Unit = {
-  //     socket.send(write(move))
-  //   }
-  // }
+    val socket = new dom.WebSocket(ws)
+  }
 
   def buildSocket(gameId: String) = {
     val ws = if (dom.window.location.protocol == "https:") {

@@ -15,7 +15,9 @@ import ujson.{read => ujsonread}
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 import com.ageofchess.client.pages._
+import com.ageofchess.client.gamestate.PendingClientGame
 import com.ageofchess.client.gamestate.ClientGameState
+import com.ageofchess.client.api.Sockets.GameSocket
 
 object Main {
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
@@ -34,7 +36,7 @@ object Main {
       case "/"      => HomePage.render
       case path if path.startsWith("/game/") => {
         val gameId = path.stripPrefix("/game/")
-        val gameState = new ClientGameState(gameId)
+        val gameState = new PendingClientGame(gameId, new GameSocket(gameId))
         new GamePage(gameId, gameState).render
       }
       case _        => NotFoundPage.render

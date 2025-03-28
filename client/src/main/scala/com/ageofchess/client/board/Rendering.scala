@@ -6,11 +6,12 @@ import com.ageofchess.shared.board._
 import com.ageofchess.shared.piece._
 import com.ageofchess.client.api.Sockets
 import com.ageofchess.client.gamestate.ClientGameState
+import com.ageofchess.client.gamestate.ClientGame
 import org.scalajs.dom
 
 import upickle.default._ // remove later
 
-class GameStateRenderer(val gameState: ClientGameState) {
+class GameStateRenderer(val gameState: ClientGame) {
   def render(
     boardState: Vector[Vector[(SquareType, Option[Piece])]]
   ): HtmlElement = {
@@ -81,7 +82,7 @@ class GameStateRenderer(val gameState: ClientGameState) {
       onDrop.preventDefault --> { _ =>
         gameState.selectedPiece.now() match {
           case Some((selectedPosition)) => {
-            gameState.socket.send(write(MovePiece(selectedPosition, location)))
+            gameState.connection.socket.send(write(MovePiece(selectedPosition, location)))
             piecesVar.update { pieces =>
               pieces.get(selectedPosition).map { pieceToMove =>
                 pieces - selectedPosition + (location -> pieceToMove)  
@@ -107,7 +108,7 @@ class GameStateRenderer(val gameState: ClientGameState) {
             pieces - selectedPosition + (location -> pieceToMove)
           }.getOrElse(pieces) 
         }
-        gameState.socket.send(write(MovePiece(selectedPosition, location)))
+        gameState.connection.socket.send(write(MovePiece(selectedPosition, location)))
         gameState.selectedPiece.set(None)
       }
       case Some(_) => gameState.selectedPiece.set(None)

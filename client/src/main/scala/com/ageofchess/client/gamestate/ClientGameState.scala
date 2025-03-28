@@ -2,11 +2,119 @@ package com.ageofchess.client.gamestate
 
 import com.raquo.laminar.api.L._
 import com.ageofchess.client.api.Sockets
+import com.ageofchess.client.api.Sockets.GameSocket
 import com.ageofchess.shared.game._
 import com.ageofchess.shared.piece._
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.Messages._
 import upickle.default._
+
+class ClientGame(
+  val gameId: String,
+  val player: Player,
+  val opponent: Player,
+  val startingPlayer: Player,
+  val connection: GameSocket
+) {
+  val piecesVar: Var[Map[Location, Piece]] = Var(Map())
+  val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
+  val selectedPiece: Var[Option[Location]] = Var(None)
+  
+  connection.socket.onmessage = event => {
+    val message: GameMessage = read[GameMessage](event.data.toString)
+    println(s"Received game message: $message")
+    message match {
+      case UpdatePieces(pieces) => {
+        println("Updating board state")
+        piecesVar.set(pieces)
+      }
+      case _ =>
+    }
+  }
+
+  val moveTurnBus = new EventBus[Unit]
+  val playerToMoveSignal: Signal[Player] = moveTurnBus.events.scanLeft(startingPlayer) { case (p, _) =>
+    if (p == player) opponent else player 
+  }
+
+  val isPlayerTurnSignal: Signal[Boolean] = playerToMoveSignal.map { p =>
+    if (p == player) true else false
+  }
+
+  val boardStateSignal = Signal.combine(boardVar.signal, piecesVar.signal).map {
+    case (Some(board), pieces) => {
+      val zippedBoard = board.zipWithIndex.map { case (row, rIdx) =>
+        row.zipWithIndex.map { case (square, cIdx) =>
+          val pieceOpt = pieces.get(Location(rIdx, cIdx))
+          (square, pieceOpt)
+        }  
+      }
+      Some(zippedBoard)
+    }
+    case _ => None
+  }
+}
+
+class PendingClientGame(
+  val gameId: String,
+  val connection: GameSocket
+) {
+
+  val piecesVar: Var[Map[Location, Piece]] = Var(Map())
+  val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
+  val playerVar: Var[Option[Player]] = Var(None)
+  val opponentVar: Var[Option[Player]] = Var(None)
+  val playerToMoveVar: Var[Option[Player]] = Var(None)
+
+  piecesVar.signal.map { x => println("a") }
+  boardVar.signal.map { x => println("b") }
+  playerVar.signal.map { x => println("c") }
+  opponentVar.signal.map { x => println("d") }
+  playerToMoveVar.signal.map { x => println("e") }
+
+  val initializedBoardSignal = Signal.combine(
+    boardVar.signal,
+    piecesVar.signal,
+    playerVar.signal,
+    opponentVar.signal,
+    playerToMoveVar.signal
+  ).map {
+    case (Some(board), pieces, Some(player), Some(opponent), Some(startingPlayer)) => {
+      println("initialized board signal")
+      Some((board, pieces, player, opponent, startingPlayer))
+    }
+    case _ => {
+      println("not initialized")
+      None
+    }
+  }
+
+  connection.socket.onopen = _ => {
+    connection.socket.send(write(ConnectPlayer("placeholder")))
+  }
+
+  connection.socket.onmessage = event => {
+    val message: GameMessage = read[GameMessage](event.data.toString)
+    println(s"Received pending game message: $message")
+    message match {
+      case InitializeBoard(board, pieces) => {
+        println("Initializing board")
+        boardVar.set(Some(board.squares))
+        piecesVar.set(pieces)
+      }
+      case AssignPlayers(player, opponent) => {
+        println("Assigning players")
+        playerVar.set(Some(player))
+        opponentVar.set(Some(opponent))
+        val startingPlayer = if (player.color == White) player else opponent
+        playerToMoveVar.set(Some(startingPlayer))
+
+        println(boardVar.now(), piecesVar.now(), playerVar.now(), opponentVar.now(), playerToMoveVar.now())
+      }
+      case _ =>
+    }
+  }
+}
 
 class ClientGameState(val gameId: String) {
   // TODO: Might be better as a Vector[Vector[(Location, Var[Piece])]], as a grid.  
@@ -16,7 +124,7 @@ class ClientGameState(val gameId: String) {
   val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
   val playerVar: Var[Option[Player]] = Var(None)
   val opponentVar: Var[Option[Player]] = Var(None)
-  val playerToMoveVar: Var[Option[Player]] = Var(None) 
+  val playerToMoveVar: Var[Option[Player]] = Var(None)
   val selectedPiece: Var[Option[Location]] = Var(None)
 
   // TODO: Not part of the game state, it's just how the client communicates with the server.
@@ -57,6 +165,7 @@ class ClientGameState(val gameId: String) {
 
   val boardStateSignal = Signal.combine(boardVar.signal, piecesVar.signal).map {
     case (Some(board), pieces) => {
+      println("a")
       val zippedBoard = board.zipWithIndex.map { case (row, rIdx) =>
         row.zipWithIndex.map { case (square, cIdx) =>
           val pieceOpt = pieces.get(Location(rIdx, cIdx))
@@ -65,7 +174,7 @@ class ClientGameState(val gameId: String) {
       }
       Some(zippedBoard)
     }
-    case _ => None
+    case _ => {println("b") ; None }
   }
 
   val moveTurnBus = new EventBus[Unit]
