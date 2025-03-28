@@ -78,8 +78,6 @@ object Server extends MainRoutes {
     val parsedMessage = read[ClientMessage](message)
     parsedMessage match {
       case ConnectPlayer(p) => {
-        val serverMessage = InitializeBoard(game.board, game.pieces.toMap)
-        broadcastToPlayers(game, write(serverMessage))
         // TODO: extract this out
         playerChannels.get(game.white.id).foreach { connection =>
           val assignments = AssignPlayers(game.white, game.black)
@@ -90,12 +88,23 @@ object Server extends MainRoutes {
           connection.send(cask.Ws.Text(write(assignments)))  
         }
       }
-      case MovePiece(from, to) => {
-        game.pieces.get(from).foreach { piece =>
-          game.pieces.remove(from)
-          game.pieces.update(to, piece)
+      case AwaitingBoard(playerId) => {
+        val serverMessage = InitializeBoard(game.board, game.pieces.toMap)
+        playerChannels.get(playerId).foreach { connection =>
+          connection.send(cask.Ws.Text(write(serverMessage)))
         }
-        val serverMessage = UpdatePieces(game.pieces.toMap)
+      }
+      case MovePiece(player, from, to) => {
+        if (player == game.playerToMove) {
+            game.pieces.get(from).foreach { piece =>
+            game.pieces.remove(from)
+            game.pieces.update(to, piece)
+            game.changeActivePlayer
+          }
+        } else {
+          // TODO no current op here, maybe a rejection message should be sent
+        }
+        val serverMessage = UpdatePieces(game.playerToMove, game.pieces.toMap)
         broadcastToPlayers(game, write(serverMessage))
       }
     }
@@ -138,8 +147,7 @@ object Server extends MainRoutes {
       player1,
       player2,
       board,
-      pieces,
-      true
+      pieces
     )
 
     games.update(pendingGame.gameId, game)

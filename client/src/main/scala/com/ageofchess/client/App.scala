@@ -16,7 +16,6 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 import com.ageofchess.client.pages._
 import com.ageofchess.client.gamestate.PendingClientGame
-import com.ageofchess.client.gamestate.ClientGameState
 import com.ageofchess.client.api.Sockets.GameSocket
 
 object Main {

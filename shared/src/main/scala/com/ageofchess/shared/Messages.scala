@@ -5,6 +5,7 @@ import com.ageofchess.shared.board.Board
 import com.ageofchess.shared.game.Player
 import com.ageofchess.shared.piece.{Location, Piece}
 import collection.mutable
+import scala.concurrent.Await
 
 object Messages {
 
@@ -23,7 +24,7 @@ object Messages {
     implicit val rw: ReadWriter[AssignPlayers] = macroRW
   }
 
-  case class UpdatePieces(pieces: Map[Location, Piece]) extends GameMessage
+  case class UpdatePieces(nextActivePlayer: Player, pieces: Map[Location, Piece]) extends GameMessage
   object UpdatePieces {
     implicit val rw: ReadWriter[UpdatePieces] = macroRW
   }
@@ -38,7 +39,12 @@ object Messages {
     implicit val rw: ReadWriter[ConnectPlayer] = macroRW
   }
 
-  case class MovePiece(from: Location, to: Location) extends ClientMessage // TODO: playerIds, piece movement aren't strictly needed yet but perhaps have benefits?
+  case class AwaitingBoard(playerId: String) extends ClientMessage
+  object AwaitingBoard {
+    implicit val rw: ReadWriter[AwaitingBoard] = macroRW
+  }
+
+  case class MovePiece(player: Player, from: Location, to: Location) extends ClientMessage // TODO: playerIds, piece movement aren't strictly needed yet but perhaps have benefits?
   object MovePiece {
     implicit val rw: ReadWriter[MovePiece] = macroRW
   }

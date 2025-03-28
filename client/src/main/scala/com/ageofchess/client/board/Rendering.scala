@@ -5,7 +5,6 @@ import com.ageofchess.shared.Messages._
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.piece._
 import com.ageofchess.client.api.Sockets
-import com.ageofchess.client.gamestate.ClientGameState
 import com.ageofchess.client.gamestate.ClientGame
 import org.scalajs.dom
 
@@ -27,6 +26,25 @@ class GameStateRenderer(val gameState: ClientGame) {
             val squareColor = if ((rIdx + cIdx) % 2 == 0) Grass else Dirt
             val renderableSquare = RenderableSquare(squareColor, square)
             renderSquare(Location(rIdx, cIdx), renderableSquare, piece, gameState.piecesVar)  
+          },
+          onMountCallback { ctx =>
+            gameState.connection.socket.onmessage = event => {
+              val message: GameMessage = read[GameMessage](event.data.toString)
+              val playerToMove = gameState.playerToMoveSignal.observe(ctx.owner)
+              println(s"Received game message: $message")
+              message match {
+                case UpdatePieces(nextActivePlayer, pieces) => {
+                  println("Updating board state")
+                  gameState.piecesVar.set(pieces)
+                  println("playerToMove: " + playerToMove.now())
+                  if (nextActivePlayer == gameState.player && playerToMove.now() != gameState.player) {
+                    println("changing active player")
+                    gameState.moveTurnBus.emit()
+                  }
+                }
+                case _ =>    
+              }
+            }
           }
         )  
       }
@@ -47,9 +65,7 @@ class GameStateRenderer(val gameState: ClientGame) {
     val dragEffects = Observer[(dom.DragEvent, Boolean)](onNext = { case (e, canMove) =>
       if (canMove) {
         gameState.selectedPiece.set(Some(location))
-        // gameState.playerToMoveVar.set(gameState.opponentVar.now())
-        gameState.moveTurnBus.emit()
-        println(gameState.isPlayerTurnSignal)
+        // gameState.moveTurnBus.emit()
       } else {
         e.preventDefault
       }
@@ -82,13 +98,14 @@ class GameStateRenderer(val gameState: ClientGame) {
       onDrop.preventDefault --> { _ =>
         gameState.selectedPiece.now() match {
           case Some((selectedPosition)) => {
-            gameState.connection.socket.send(write(MovePiece(selectedPosition, location)))
+            gameState.connection.socket.send(write(MovePiece(gameState.player, selectedPosition, location)))
             piecesVar.update { pieces =>
               pieces.get(selectedPosition).map { pieceToMove =>
                 pieces - selectedPosition + (location -> pieceToMove)  
               }.getOrElse(pieces)
             }
             gameState.selectedPiece.set(None)
+            gameState.moveTurnBus.emit()
           }
           case None => 
         }
@@ -108,7 +125,7 @@ class GameStateRenderer(val gameState: ClientGame) {
             pieces - selectedPosition + (location -> pieceToMove)
           }.getOrElse(pieces) 
         }
-        gameState.connection.socket.send(write(MovePiece(selectedPosition, location)))
+        gameState.connection.socket.send(write(MovePiece(gameState.player, selectedPosition, location)))
         gameState.selectedPiece.set(None)
       }
       case Some(_) => gameState.selectedPiece.set(None)

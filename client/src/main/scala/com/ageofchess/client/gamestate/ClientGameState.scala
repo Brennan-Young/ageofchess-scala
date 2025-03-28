@@ -24,16 +24,22 @@ class ClientGame(
     val message: GameMessage = read[GameMessage](event.data.toString)
     println(s"Received game message: $message")
     message match {
-      case UpdatePieces(pieces) => {
-        println("Updating board state")
+      case InitializeBoard(board, pieces) => {
+        println("Initializing board")
+        boardVar.set(Some(board.squares))
         piecesVar.set(pieces)
       }
+      // case UpdatePieces(nextActivePlayer, pieces) => {
+      //   println("Updating board state")
+      //   piecesVar.set(pieces)
+      // }
       case _ =>
     }
   }
 
   val moveTurnBus = new EventBus[Unit]
   val playerToMoveSignal: Signal[Player] = moveTurnBus.events.scanLeft(startingPlayer) { case (p, _) =>
+    println(p)
     if (p == player) opponent else player 
   }
 
@@ -59,32 +65,19 @@ class PendingClientGame(
   val gameId: String,
   val connection: GameSocket
 ) {
-
-  val piecesVar: Var[Map[Location, Piece]] = Var(Map())
-  val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
   val playerVar: Var[Option[Player]] = Var(None)
   val opponentVar: Var[Option[Player]] = Var(None)
-  val playerToMoveVar: Var[Option[Player]] = Var(None)
+  val startingPlayerVar: Var[Option[Player]] = Var(None)
 
-  piecesVar.signal.map { x => println("a") }
-  boardVar.signal.map { x => println("b") }
-  playerVar.signal.map { x => println("c") }
-  opponentVar.signal.map { x => println("d") }
-  playerToMoveVar.signal.map { x => println("e") }
-
-  val initializedBoardSignal = Signal.combine(
-    boardVar.signal,
-    piecesVar.signal,
+  val initializedPlayersSignal = Signal.combine(
     playerVar.signal,
     opponentVar.signal,
-    playerToMoveVar.signal
+    startingPlayerVar.signal
   ).map {
-    case (Some(board), pieces, Some(player), Some(opponent), Some(startingPlayer)) => {
-      println("initialized board signal")
-      Some((board, pieces, player, opponent, startingPlayer))
+    case (Some(player), Some(opponent), Some(startingPlayer)) => {
+      Some((player, opponent, startingPlayer))
     }
     case _ => {
-      println("not initialized")
       None
     }
   }
@@ -97,93 +90,86 @@ class PendingClientGame(
     val message: GameMessage = read[GameMessage](event.data.toString)
     println(s"Received pending game message: $message")
     message match {
-      case InitializeBoard(board, pieces) => {
-        println("Initializing board")
-        boardVar.set(Some(board.squares))
-        piecesVar.set(pieces)
-      }
       case AssignPlayers(player, opponent) => {
         println("Assigning players")
         playerVar.set(Some(player))
         opponentVar.set(Some(opponent))
         val startingPlayer = if (player.color == White) player else opponent
-        playerToMoveVar.set(Some(startingPlayer))
-
-        println(boardVar.now(), piecesVar.now(), playerVar.now(), opponentVar.now(), playerToMoveVar.now())
+        startingPlayerVar.set(Some(startingPlayer))
       }
       case _ =>
     }
   }
 }
 
-class ClientGameState(val gameId: String) {
-  // TODO: Might be better as a Vector[Vector[(Location, Var[Piece])]], as a grid.  
-  // We'd be storing a bunch more in memory, but each square can evolve independently rather 
-  // than updating the entire Var every time a piece moves.
-  val piecesVar: Var[Map[Location, Piece]] = Var(Map())
-  val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
-  val playerVar: Var[Option[Player]] = Var(None)
-  val opponentVar: Var[Option[Player]] = Var(None)
-  val playerToMoveVar: Var[Option[Player]] = Var(None)
-  val selectedPiece: Var[Option[Location]] = Var(None)
+// class ClientGameState(val gameId: String) {
+//   // TODO: Might be better as a Vector[Vector[(Location, Var[Piece])]], as a grid.  
+//   // We'd be storing a bunch more in memory, but each square can evolve independently rather 
+//   // than updating the entire Var every time a piece moves.
+//   val piecesVar: Var[Map[Location, Piece]] = Var(Map())
+//   val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
+//   val playerVar: Var[Option[Player]] = Var(None)
+//   val opponentVar: Var[Option[Player]] = Var(None)
+//   val playerToMoveVar: Var[Option[Player]] = Var(None)
+//   val selectedPiece: Var[Option[Location]] = Var(None)
 
-  // TODO: Not part of the game state, it's just how the client communicates with the server.
-  // Should be moved out of this class or the class should be renamed
-  val socket = Sockets.buildSocket(gameId)
+//   // TODO: Not part of the game state, it's just how the client communicates with the server.
+//   // Should be moved out of this class or the class should be renamed
+//   val socket = Sockets.buildSocket(gameId)
 
-  socket.onopen = _ => {
-    socket.send(write(ConnectPlayer("placeholder")))
-  }
+//   socket.onopen = _ => {
+//     socket.send(write(ConnectPlayer("placeholder")))
+//   }
 
-  socket.onmessage = event => {
-    val message: GameMessage = read[GameMessage](event.data.toString)
-    println(s"Received message: $message")
-    message match {
-      case InitializeBoard(board, pieces) => {
-        println("Initializing board")
-        boardVar.set(Some(board.squares))
-        piecesVar.set(pieces)
-      }
-      case AssignPlayers(player, opponent) => {
-        println("Assigning players")
-        playerVar.set(Some(player))
-        opponentVar.set(Some(opponent))
-        val startingPlayer = if (player.color == White) player else opponent
-        // TODO: obviously bad code, fix this
-        if (startingPlayer == player) moveTurnBus.emit() else {
-          moveTurnBus.emit()
-          moveTurnBus.emit()
-        }
-      }
-      case UpdatePieces(pieces) => {
-        println("Updating board state")
-        piecesVar.set(pieces)
-      }
-      case _ =>
-    }
-  }
+//   socket.onmessage = event => {
+//     val message: GameMessage = read[GameMessage](event.data.toString)
+//     println(s"Received message: $message")
+//     message match {
+//       case InitializeBoard(board, pieces) => {
+//         println("Initializing board")
+//         boardVar.set(Some(board.squares))
+//         piecesVar.set(pieces)
+//       }
+//       case AssignPlayers(player, opponent) => {
+//         println("Assigning players")
+//         playerVar.set(Some(player))
+//         opponentVar.set(Some(opponent))
+//         val startingPlayer = if (player.color == White) player else opponent
+//         // TODO: obviously bad code, fix this
+//         if (startingPlayer == player) moveTurnBus.emit() else {
+//           moveTurnBus.emit()
+//           moveTurnBus.emit()
+//         }
+//       }
+//       case UpdatePieces(pieces) => {
+//         println("Updating board state")
+//         piecesVar.set(pieces)
+//       }
+//       case _ =>
+//     }
+//   }
 
-  val boardStateSignal = Signal.combine(boardVar.signal, piecesVar.signal).map {
-    case (Some(board), pieces) => {
-      println("a")
-      val zippedBoard = board.zipWithIndex.map { case (row, rIdx) =>
-        row.zipWithIndex.map { case (square, cIdx) =>
-          val pieceOpt = pieces.get(Location(rIdx, cIdx))
-          (square, pieceOpt)
-        }  
-      }
-      Some(zippedBoard)
-    }
-    case _ => {println("b") ; None }
-  }
+//   val boardStateSignal = Signal.combine(boardVar.signal, piecesVar.signal).map {
+//     case (Some(board), pieces) => {
+//       println("a")
+//       val zippedBoard = board.zipWithIndex.map { case (row, rIdx) =>
+//         row.zipWithIndex.map { case (square, cIdx) =>
+//           val pieceOpt = pieces.get(Location(rIdx, cIdx))
+//           (square, pieceOpt)
+//         }  
+//       }
+//       Some(zippedBoard)
+//     }
+//     case _ => {println("b") ; None }
+//   }
 
-  val moveTurnBus = new EventBus[Unit]
-  val playerToMoveSignal: Signal[Option[Player]] = moveTurnBus.events.scanLeft(None: Option[Player]) { case (player, _) =>
-    if (player == playerVar.now()) opponentVar.now() else playerVar.now()  
-  }
+//   val moveTurnBus = new EventBus[Unit]
+//   val playerToMoveSignal: Signal[Option[Player]] = moveTurnBus.events.scanLeft(None: Option[Player]) { case (player, _) =>
+//     if (player == playerVar.now()) opponentVar.now() else playerVar.now()  
+//   }
 
-  val isPlayerTurnSignal: Signal[Boolean] = Signal.combine(playerVar.signal, playerToMoveSignal).map {
-    case (Some(player), Some(playerToMove)) => if (player == playerToMove) true else false
-    case _ => false
-  }
-}
+//   val isPlayerTurnSignal: Signal[Boolean] = Signal.combine(playerVar.signal, playerToMoveSignal).map {
+//     case (Some(player), Some(playerToMove)) => if (player == playerToMove) true else false
+//     case _ => false
+//   }
+// }
