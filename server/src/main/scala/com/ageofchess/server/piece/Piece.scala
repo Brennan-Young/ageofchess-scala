@@ -34,6 +34,7 @@ case class PlacedPiece(location: Location, piece: Piece) {
       }
   }
 
+  // buggy - this would allow a piece to move/pass through another piece when determining moves
   @tailrec final def getValid(state: mutable.Set[Square], board: Board, location: Location, moveVector: MoveVector): Set[Square] = {
     val nextSquareLocation = location.translate(moveVector)
     val nextSquare = board.get(nextSquareLocation)
