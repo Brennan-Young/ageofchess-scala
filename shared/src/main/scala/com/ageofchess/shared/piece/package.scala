@@ -161,13 +161,13 @@ package object piece {
     implicit val rw: ReadWriter[Location] = macroRW
   }
 
-  def validMoves(
-    board: Vector[Vector[SquareType]],
-    pieces: Map[Location, Piece],
-    placedPiece: (Location, Piece)
-  ): Set[Location] = {
+  // def validMoves(
+  //   board: Vector[Vector[SquareType]],
+  //   pieces: Map[Location, Piece],
+  //   placedPiece: (Location, Piece)
+  // ): Set[Location] = {
 
-  }
+  // }
 
   val defaultPieces: Map[Location, Piece] = Map(
     Location(0, 0) -> Piece(White, King),

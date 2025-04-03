@@ -15,7 +15,7 @@ lazy val shared = crossProject(JSPlatform, JVMPlatform)
     name := "shared",
     scalaVersion := "2.12.18",
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %% "upickle" % "3.1.0"
+      "com.lihaoyi" %%% "upickle" % "3.1.0"
     )
   )
   .jvmSettings()
