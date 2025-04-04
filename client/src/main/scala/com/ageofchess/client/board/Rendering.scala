@@ -49,6 +49,8 @@ class GameStateRenderer(val gameState: ClientGame) {
           // }
         )  
       },
+      onClick.map { event => findSquare(event.target).map(event -> _) } --> clickBus.writer,
+      clickEvents --> clickEffects,
       onMountCallback { ctx =>
         gameState.connection.socket.onmessage = event => {
           val message: GameMessage = read[GameMessage](event.data.toString)
@@ -69,6 +71,22 @@ class GameStateRenderer(val gameState: ClientGame) {
         }
       }
     )
+  }
+
+  import scala.util.Try
+
+  def findSquare(target: dom.EventTarget): Option[Location] = {
+    target match {
+      case el: dom.Element => {
+        el.closest(".board-square") match {
+          case null => None
+          case square => for {
+            x <- Try(square.getAttribute("data-x").toInt).toOption
+            y <- Try(square.getAttribute("data-y").toInt).toOption
+          } yield Location(x, y)
+        }
+      }
+    }
   }
 
   val playerDragBus = new EventBus[(dom.DragEvent, Location)]
@@ -93,8 +111,16 @@ class GameStateRenderer(val gameState: ClientGame) {
     }
   })
 
-  val clickBus = new EventBus[(dom.MouseEvent, Location)]
-  val clickEvents = clickBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
+  val clickBus = new EventBus[Option[(dom.MouseEvent, Location)]]
+
+  val clickEvents = clickBus
+    .events
+    .withCurrentValueOf(gameState.isPlayerTurnSignal, gameState.piecesVar.signal)
+    .collect { case (Some((event, location)), canMove, pieces) if (pieces.contains(location) || gameState.selectedPiece.now().isDefined) =>
+      println(location, pieces)
+      (event, location, canMove)
+    }
+
   val clickEffects = Observer[(dom.MouseEvent, Location, Boolean)](onNext = { case (e, loc, canMove) =>
     if (canMove) {
       println(gameState.selectedPiece.now())
@@ -130,6 +156,8 @@ class GameStateRenderer(val gameState: ClientGame) {
 
     div(
       cls := "board-square",
+      dataAttr("x") := location.x.toString,
+      dataAttr("y") := location.y.toString,
       backgroundImage := s"url(/assets/${square.asset})",
       piece.map { p =>
         img(
@@ -153,11 +181,11 @@ class GameStateRenderer(val gameState: ClientGame) {
         )
       },
       // onClick --> { movePieceOnClick(location, piece, piecesVar) },
-      onClick.map { e =>
-        println("Clicked on: " + location)
-        e -> location
-      } --> clickBus.writer,
-      clickEvents --> clickEffects,
+      // onClick.map { e =>
+      //   println("Clicked on: " + location)
+      //   e -> location
+      // } --> clickBus.writer,
+      // clickEvents --> clickEffects,
       onDragOver.preventDefault --> { _ => },
       onDrop.preventDefault --> { _ =>
         gameState.selectedPiece.now().foreach { position =>
