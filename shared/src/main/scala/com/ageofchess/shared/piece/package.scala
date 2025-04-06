@@ -161,13 +161,27 @@ package object piece {
     implicit val rw: ReadWriter[Location] = macroRW
   }
 
-  // def validMoves(
-  //   board: Vector[Vector[SquareType]],
-  //   pieces: Map[Location, Piece],
-  //   placedPiece: (Location, Piece)
-  // ): Set[Location] = {
+  // TODO: Use board class, and make (SquareType, Option[Piece]) its own class
+  def validMoves(
+    board: Vector[Vector[(SquareType, Option[Piece])]],
+    pieceLocation: Location,
+    piece: Piece
+  ): Set[Location] = {
 
-  // }
+    piece.moves.flatMap { moveVector =>
+      getValid(mutable.Set.empty[Location], board, location, moveVector))  
+    }
+  }
+
+  @tailrec def getValid(
+    state: mutable.Set[Location],
+    board: Vector[Vector[(SquareType, Option[Piece])]],
+    location: Location,
+    moveVector: MoveVector
+  ): Set[Location] = {
+
+    Set()
+  }
 
   val defaultPieces: Map[Location, Piece] = Map(
     Location(0, 0) -> Piece(White, King),
