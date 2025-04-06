@@ -28,25 +28,6 @@ class GameStateRenderer(val gameState: ClientGame) {
             val renderableSquare = RenderableSquare(squareColor, square)
             renderSquare(Location(rIdx, cIdx), renderableSquare, piece)  
           }
-          // onMountCallback { ctx =>
-          //   gameState.connection.socket.onmessage = event => {
-          //     val message: GameMessage = read[GameMessage](event.data.toString)
-          //     val playerToMove = gameState.playerToMoveSignal.observe(ctx.owner)
-          //     println(s"Received game message: $message")
-          //     message match {
-          //       case UpdatePieces(nextActivePlayer, pieces) => {
-          //         println("Updating board state")
-          //         gameState.piecesVar.set(pieces)
-          //         println("playerToMove: " + playerToMove.now())
-          //         if (nextActivePlayer == gameState.player && playerToMove.now() != gameState.player) {
-          //           println("changing active player")
-          //           gameState.moveTurnBus.emit()
-          //         }
-          //       }
-          //       case _ =>    
-          //     }
-          //   }
-          // }
         )  
       },
       onClick.map { event => findSquare(event.target).map(event -> _) } --> clickBus.writer,
@@ -58,11 +39,8 @@ class GameStateRenderer(val gameState: ClientGame) {
           println(s"Received game message: $message")
           message match {
             case UpdatePieces(nextActivePlayer, pieces) => {
-              println("Updating board state")
               gameState.piecesVar.set(pieces)
-              println("playerToMove: " + playerToMove.now())
               if (nextActivePlayer == gameState.player && playerToMove.now() != gameState.player) {
-                println("changing active player")
                 gameState.moveTurnBus.emit()
               }
             }
@@ -92,7 +70,6 @@ class GameStateRenderer(val gameState: ClientGame) {
   val playerDragBus = new EventBus[(dom.DragEvent, Location)]
   val playerDragEvents = playerDragBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
   val playerDragEffects = Observer[(dom.DragEvent, Location, Boolean)](onNext = { case (e, loc, canMove) =>
-    println(e, loc, canMove)
     if (canMove) {
       gameState.selectedPiece.set(Some(loc))
     } else {
@@ -103,7 +80,6 @@ class GameStateRenderer(val gameState: ClientGame) {
   val playerClickBus = new EventBus[(dom.MouseEvent, Location)]
   val playerClickEvents = playerClickBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
   val playerClickEffects = Observer[(dom.MouseEvent, Location, Boolean)](onNext = { case (e, loc, canMove) =>
-    println(e, loc, canMove)
     if (canMove) {
       gameState.selectedPiece.set(Some(loc))
     } else {
@@ -139,21 +115,6 @@ class GameStateRenderer(val gameState: ClientGame) {
     square: RenderableSquare,
     piece: Option[Piece]
   ): HtmlElement = {
-
-    //  TODO: DragEvent is used for both start and end of drag.  We can potentially make this more specific to our application
-    // and make it EventBus[Location]
-    // val dragBus = new EventBus[dom.DragEvent]
-    // val dragEvents = dragBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
-    // val dragEffects = Observer[(dom.DragEvent, Boolean)](onNext = { case (e, canMove) =>
-    //   println(dragBus)
-    //   if (canMove) {
-    //     gameState.selectedPiece.set(Some(location))
-    //     // gameState.moveTurnBus.emit()
-    //   } else {
-    //     e.preventDefault
-    //   }
-    // })
-
     div(
       cls := "board-square",
       dataAttr("x") := location.x.toString,
@@ -169,84 +130,16 @@ class GameStateRenderer(val gameState: ClientGame) {
           // dragEvents --> dragEffects
           onDragStart.map(e => e -> location) --> playerDragBus.writer,
           playerDragEvents --> playerDragEffects
-          // onDragStart --> { _ =>
-          //   gameState.selectedPiece.set(Some(location))
-          // }
-          // also works instead of the dragBus - look into this more
-          // onDragStart.compose(_.withCurrentValueOf(gameState.isPlayerTurnSignal).collect {
-          //   case (e, true) => e
-          // }) --> { _ =>
-          //   gameState.selectedPiece.set(Some(location))
-          // }
         )
       },
-      // onClick --> { movePieceOnClick(location, piece, piecesVar) },
-      // onClick.map { e =>
-      //   println("Clicked on: " + location)
-      //   e -> location
-      // } --> clickBus.writer,
-      // clickEvents --> clickEffects,
       onDragOver.preventDefault --> { _ => },
       onDrop.preventDefault --> { _ =>
         gameState.selectedPiece.now().foreach { position =>
           drop(position, location)
         }
-        // gameState.selectedPiece.now() match {
-        //   case Some((selectedPosition)) if selectedPosition != location => {
-        //     gameState.connection.socket.send(write(MovePiece(gameState.player, selectedPosition, location)))
-        //     piecesVar.update { pieces =>
-        //       pieces.get(selectedPosition).map { pieceToMove =>
-        //         pieces - selectedPosition + (location -> pieceToMove)  
-        //       }.getOrElse(pieces)
-        //     }
-        //     gameState.selectedPiece.set(None)
-        //     gameState.moveTurnBus.emit()
-        //   }
-        //   case Some(_) => gameState.selectedPiece.set(None)
-        //   case None => 
-        // }
       }
-      // onMountCallback { ctx =>
-      //   gameState.connection.socket.onmessage = event => {
-      //     val message: GameMessage = read[GameMessage](event.data.toString)
-      //     val playerToMove = gameState.playerToMoveSignal.observe(ctx.owner)
-      //     println(s"Received game message: $message")
-      //     message match {
-      //       case UpdatePieces(nextActivePlayer, pieces) => {
-      //         println("Updating board state")
-      //         gameState.piecesVar.set(pieces)
-      //         println("playerToMove: " + playerToMove.now())
-      //         if (nextActivePlayer == gameState.player && playerToMove.now() != gameState.player) {
-      //           println("changing active player")
-      //           gameState.moveTurnBus.emit()
-      //         }
-      //       }
-      //       case _ =>    
-      //     }
-      //   }
-      // }
     )
   }
-
-  // def dropPiece(
-  //   location: Location
-  // ): Unit = {
-  //   println("moving piece")
-  //   gameState.selectedPiece.now() match {
-  //     case Some(selectedPosition) if selectedPosition != location => {
-  //       gameState.piecesVar.update { pieces =>
-  //         pieces.get(selectedPosition).map { pieceToMove =>
-  //           pieces - selectedPosition + (location -> pieceToMove)
-  //         }.getOrElse(pieces)
-  //       }
-  //       gameState.connection.socket.send(write(MovePiece(gameState.player, selectedPosition, location)))
-  //       gameState.selectedPiece.set(None)
-  //       gameState.moveTurnBus.emit()
-  //     }
-  //     case Some(_) => gameState.selectedPiece.set(None)
-  //     case None =>
-  //   }
-  // }
 
   def drop(
     originalPosition: Location,
@@ -265,29 +158,5 @@ class GameStateRenderer(val gameState: ClientGame) {
     else {
       gameState.selectedPiece.set(None)
     }
-  }
-
-  def movePieceOnClick(
-    location: Location,
-    piece: Option[Piece],
-    piecesVar: Var[Map[Location, Piece]]
-  ): dom.Event => Unit = { _ =>
-    gameState.selectedPiece.now() match {
-      case Some(selectedPosition) if selectedPosition != location => {
-        piecesVar.update { pieces =>
-          pieces.get(selectedPosition).map { pieceToMove =>
-            pieces - selectedPosition + (location -> pieceToMove)
-          }.getOrElse(pieces) 
-        }
-        gameState.connection.socket.send(write(MovePiece(gameState.player, selectedPosition, location)))
-        gameState.selectedPiece.set(None)
-      }
-      case Some(_) => gameState.selectedPiece.set(None)
-      case None => piece match {
-        case Some(_) => gameState.selectedPiece.set(Some(location))
-        case None =>
-      }
-    }
-
   }
 }
