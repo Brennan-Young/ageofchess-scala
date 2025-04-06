@@ -18,7 +18,7 @@ class ClientGame(
 ) {
   val piecesVar: Var[Map[Location, Piece]] = Var(Map())
   val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
-  val selectedPiece: Var[Option[Location]] = Var(None)
+  val selectedPiece: Var[Option[(Location, Piece)]] = Var(None)
   
   connection.socket.onmessage = event => {
     val message: GameMessage = read[GameMessage](event.data.toString)

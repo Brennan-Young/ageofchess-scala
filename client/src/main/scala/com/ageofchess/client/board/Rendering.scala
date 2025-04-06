@@ -7,9 +7,8 @@ import com.ageofchess.shared.piece._
 import com.ageofchess.client.api.Sockets
 import com.ageofchess.client.gamestate.ClientGame
 import org.scalajs.dom
-
+import scala.util.Try
 import upickle.default._ // remove later
-import java.awt.Event
 
 class GameStateRenderer(val gameState: ClientGame) {
   def render(
@@ -28,7 +27,7 @@ class GameStateRenderer(val gameState: ClientGame) {
             val renderableSquare = RenderableSquare(squareColor, square)
             renderSquare(Location(rIdx, cIdx), renderableSquare, piece)  
           }
-        )  
+        )
       },
       onClick.map { event => findSquare(event.target).map(event -> _) } --> clickBus.writer,
       clickEvents --> clickEffects,
@@ -44,14 +43,12 @@ class GameStateRenderer(val gameState: ClientGame) {
                 gameState.moveTurnBus.emit()
               }
             }
-            case _ =>    
+            case _ =>
           }
         }
       }
     )
   }
-
-  import scala.util.Try
 
   def findSquare(target: dom.EventTarget): Option[Location] = {
     target match {
@@ -67,21 +64,11 @@ class GameStateRenderer(val gameState: ClientGame) {
     }
   }
 
-  val playerDragBus = new EventBus[(dom.DragEvent, Location)]
-  val playerDragEvents = playerDragBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
-  val playerDragEffects = Observer[(dom.DragEvent, Location, Boolean)](onNext = { case (e, loc, canMove) =>
+  val dragBus = new EventBus[(dom.DragEvent, Location, Piece)]
+  val dragEvents = dragBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
+  val dragEffects = Observer[(dom.DragEvent, Location, Piece, Boolean)](onNext = { case (e, loc, piece, canMove) =>
     if (canMove) {
-      gameState.selectedPiece.set(Some(loc))
-    } else {
-      e.preventDefault()
-    }
-  })
-
-  val playerClickBus = new EventBus[(dom.MouseEvent, Location)]
-  val playerClickEvents = playerClickBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
-  val playerClickEffects = Observer[(dom.MouseEvent, Location, Boolean)](onNext = { case (e, loc, canMove) =>
-    if (canMove) {
-      gameState.selectedPiece.set(Some(loc))
+      gameState.selectedPiece.set(Some(loc, piece))
     } else {
       e.preventDefault()
     }
@@ -92,17 +79,20 @@ class GameStateRenderer(val gameState: ClientGame) {
   val clickEvents = clickBus
     .events
     .withCurrentValueOf(gameState.isPlayerTurnSignal, gameState.piecesVar.signal)
-    .collect { case (Some((event, location)), canMove, pieces) if (pieces.contains(location) || gameState.selectedPiece.now().isDefined) =>
-      println(location, pieces)
-      (event, location, canMove)
+    .collect {
+      // if the square we've selected has a piece in it, or if we've currently selected a piece - 
+      // that is, discard the clicks where a player clicks an empty square with no selected piece
+      case (Some((event, location)), canMove, pieces) if (pieces.contains(location) || gameState.selectedPiece.now().isDefined) =>
+        (event, location, canMove, pieces.get(location))
     }
 
-  val clickEffects = Observer[(dom.MouseEvent, Location, Boolean)](onNext = { case (e, loc, canMove) =>
+  val clickEffects = Observer[(dom.MouseEvent, Location, Boolean, Option[Piece])](onNext = { case (e, loc, canMove, piece) =>
     if (canMove) {
-      println(gameState.selectedPiece.now())
       gameState.selectedPiece.now() match {
-        case Some(position) => drop(position, loc)
-        case None => gameState.selectedPiece.set(Some(loc))
+        case Some((position, piece)) => drop(position, loc)
+        // TODO: piece should exist if selectedPiece is None as clickEvents filtered out cases where this doesn't hold.
+        // But should find a way to express better
+        case None => gameState.selectedPiece.set(Some(loc, piece.get))
       }
     } else {
       // Perhaps should also set the current piece to None
@@ -126,15 +116,13 @@ class GameStateRenderer(val gameState: ClientGame) {
           cls := "piece",
           // TODO: this doesn't work remotely as intended, need to read up on animations more
           // styleAttr := s"transform: translate(${location.y * 50}px, ${location.x}px);",
-          // onDragStart --> dragBus.writer,
-          // dragEvents --> dragEffects
-          onDragStart.map(e => e -> location) --> playerDragBus.writer,
-          playerDragEvents --> playerDragEffects
+          onDragStart.map(e => (e, location, p)) --> dragBus.writer,
+          dragEvents --> dragEffects
         )
       },
       onDragOver.preventDefault --> { _ => },
       onDrop.preventDefault --> { _ =>
-        gameState.selectedPiece.now().foreach { position =>
+        gameState.selectedPiece.now().foreach { case (position, piece) =>
           drop(position, location)
         }
       }
