@@ -1,6 +1,8 @@
 package com.ageofchess.shared
 
 import upickle.default._
+import scala.collection.mutable
+import scala.annotation.tailrec
 
 package object piece {
   sealed trait Color { def id: String }
@@ -168,12 +170,12 @@ package object piece {
     piece: Piece
   ): Set[Location] = {
 
-    piece.moves.flatMap { moveVector =>
-      getValid(mutable.Set.empty[Location], board, location, moveVector))  
+    piece.pieceType.moves.flatMap { moveVector =>
+      getValid(mutable.Set.empty[Location], board, pieceLocation, moveVector)
     }
   }
 
-  @tailrec def getValid(
+  def getValid(
     state: mutable.Set[Location],
     board: Vector[Vector[(SquareType, Option[Piece])]],
     location: Location,
