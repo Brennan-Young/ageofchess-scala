@@ -23,9 +23,9 @@ class GamePage(val gameId: String, val pendingGame: PendingClientGame) {
           val clientGame = new ClientGame(gameId, player, opponent, startingPlayer, pendingGame.connection)
           clientGame.connection.socket.send(write(AwaitingBoard(player.id)))
           
-          clientGame.boardStateSignal.map {
+          clientGame.boardSignal.map {
             case Some(board) => {
-              new GameStateRenderer(clientGame).render(board)
+              new GameStateRenderer(clientGame).render(board._1, board._2, board._3)
             }
             case _ => div("Loading")
           }

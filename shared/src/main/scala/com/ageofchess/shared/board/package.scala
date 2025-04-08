@@ -1,6 +1,7 @@
 package com.ageofchess.shared
 
 import upickle.default.{ReadWriter, readwriter, macroRW}
+import com.ageofchess.shared.piece._
 
 package object board {
   sealed trait SquareColor {
@@ -12,7 +13,11 @@ package object board {
 
   sealed trait SquareType {
     def id: String
+
+    def canMoveOnto: Boolean
+    def canPassThrough: Boolean
   }
+
   object SquareType {
     implicit val rw: ReadWriter[SquareType] = readwriter[String].bimap[SquareType](
       {
@@ -33,15 +38,27 @@ package object board {
 
   case object Terrain extends SquareType { 
     override def id: String = "base"
+
+    override def canMoveOnto = true
+    override def canPassThrough = true
   }
   case object Mine extends SquareType {
     override def id: String = "mine"
+
+    override def canMoveOnto = true
+    override def canPassThrough = false
   }
   case object Trees extends SquareType {
     override def id: String = "trees"
+
+    override def canMoveOnto = true
+    override def canPassThrough = false
   }
   case object Rocks extends SquareType {
     override def id: String = "rocks"
+
+    override def canMoveOnto = false
+    override def canPassThrough = false
   }
 
   case class RenderableSquare(color: SquareColor, squareType: SquareType) {
@@ -85,6 +102,22 @@ package object board {
 
   object Board {
     implicit val rw: ReadWriter[Board] = macroRW
+  }
+
+  case class BoardWithPieces(
+    squares: Vector[Vector[SquareType]],
+    pieces: Map[Location, Piece]
+  ) {
+
+    def getSquare(square: Location): Option[SquareType] = {
+      squares.lift(square.row).flatMap { row =>
+        row.lift(square.col)
+      }
+    }
+  }
+
+  object BoardWithPieces {
+    implicit val rw: ReadWriter[BoardWithPieces] = macroRW
   }
 
   

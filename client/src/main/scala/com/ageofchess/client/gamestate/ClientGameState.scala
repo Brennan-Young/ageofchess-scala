@@ -47,6 +47,19 @@ class ClientGame(
     if (p == player) true else false
   }
 
+  val validMovesSignal = Signal.combine(boardVar.signal, piecesVar.signal, selectedPiece.signal).map {
+    case (Some(board), pieces, Some((location, piece))) => {
+      validMoves(BoardWithPieces(board, pieces), location, piece)
+    }
+    case _ => Set.empty[Location]
+  }
+
+  val boardSignal = Signal.combine(boardVar.signal, piecesVar.signal, validMovesSignal).map {
+    case (Some(board), pieces, validMovesOfSelection) =>
+      Some((board, pieces, validMovesOfSelection))
+    case _ => None
+  }
+
   val boardStateSignal = Signal.combine(boardVar.signal, piecesVar.signal).map {
     case (Some(board), pieces) => {
       val zippedBoard = board.zipWithIndex.map { case (row, rIdx) =>

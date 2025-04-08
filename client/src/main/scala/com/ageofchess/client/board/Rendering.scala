@@ -12,20 +12,29 @@ import upickle.default._ // remove later
 
 class GameStateRenderer(val gameState: ClientGame) {
   def render(
-    boardState: Vector[Vector[(SquareType, Option[Piece])]]
+    // boardState: Vector[Vector[(SquareType, Option[Piece])]]
+    board: Vector[Vector[SquareType]],
+    pieces: Map[Location, Piece],
+    validMovesOfSelection: Set[Location]
   ): HtmlElement = {
-    val numColumns = boardState.headOption.map(_.size).getOrElse(0)
+    val numColumns = board.headOption.map(_.size).getOrElse(0)
 
     div(
       cls := "board",
       styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
-      boardState.zipWithIndex.map { case (row, rIdx) =>
+      board.zipWithIndex.map { case (row, rIdx) =>
         div(
           cls := "board-row",
-          row.zipWithIndex.map { case ((square, piece), cIdx) =>
+          row.zipWithIndex.map { case (square, cIdx) =>
             val squareColor = if ((rIdx + cIdx) % 2 == 0) Grass else Dirt
             val renderableSquare = RenderableSquare(squareColor, square)
-            renderSquare(Location(rIdx, cIdx), renderableSquare, piece)  
+            val location = Location(rIdx, cIdx)
+            renderSquare(
+              location,
+              renderableSquare,
+              pieces.get(location),
+              validMovesOfSelection.contains(location)
+            )
           }
         )
       },
@@ -56,9 +65,9 @@ class GameStateRenderer(val gameState: ClientGame) {
         el.closest(".board-square") match {
           case null => None
           case square => for {
-            x <- Try(square.getAttribute("data-x").toInt).toOption
-            y <- Try(square.getAttribute("data-y").toInt).toOption
-          } yield Location(x, y)
+            row <- Try(square.getAttribute("data-row").toInt).toOption
+            col <- Try(square.getAttribute("data-col").toInt).toOption
+          } yield Location(row, col)
         }
       }
     }
@@ -103,12 +112,13 @@ class GameStateRenderer(val gameState: ClientGame) {
   def renderSquare(
     location: Location,
     square: RenderableSquare,
-    piece: Option[Piece]
+    piece: Option[Piece],
+    isValidMoveOfCurrentSelection: Boolean
   ): HtmlElement = {
     div(
       cls := "board-square",
-      dataAttr("x") := location.x.toString,
-      dataAttr("y") := location.y.toString,
+      dataAttr("row") := location.row.toString,
+      dataAttr("col") := location.col.toString,
       backgroundImage := s"url(/assets/${square.asset})",
       piece.map { p =>
         img(
@@ -119,6 +129,13 @@ class GameStateRenderer(val gameState: ClientGame) {
           onDragStart.map(e => (e, location, p)) --> dragBus.writer,
           dragEvents --> dragEffects
         )
+      },
+      if (isValidMoveOfCurrentSelection) {
+        div(
+          cls := "valid-move-marker"
+        )
+      } else {
+        emptyNode
       },
       onDragOver.preventDefault --> { _ => },
       onDrop.preventDefault --> { _ =>

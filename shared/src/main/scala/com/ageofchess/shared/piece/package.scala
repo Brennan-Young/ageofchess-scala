@@ -3,6 +3,8 @@ package com.ageofchess.shared
 import upickle.default._
 import scala.collection.mutable
 import scala.annotation.tailrec
+import com.ageofchess.shared.board.BoardWithPieces
+import com.ageofchess.shared.board.SquareType
 
 package object piece {
   sealed trait Color { def id: String }
@@ -12,16 +14,19 @@ package object piece {
       {
         case Black => "black"
         case White => "white"
+        case Gaia => "gaia"
       },
       {
         case "black" => Black
         case "white" => White
+        case "gaia" => Gaia
       }
     )
   }
 
   case object Black extends Color { override def id: String = "b" }
   case object White extends Color { override def id: String = "w" }
+  case object Gaia extends Color { override def id: String = "g" }
 
   case class MoveVector(
     x: Int,
@@ -45,6 +50,7 @@ package object piece {
         case Rook => "rook"
         case Queen => "queen"
         case King => "king"
+        case Treasure => "treasure"
       },
       {
         case "pawn" => Pawn
@@ -53,8 +59,16 @@ package object piece {
         case "rook" => Rook
         case "queen" => Queen
         case "king" => King
+        case "treasure" => Treasure
       }
     )
+  }
+
+  case object Treasure extends PieceType {
+    override def id: String = "treasure"
+
+    override def moves = Set()
+    override def captures = Set()
   }
 
   case object Pawn extends PieceType {
@@ -157,32 +171,47 @@ package object piece {
     implicit val rw: ReadWriter[Piece] = macroRW
   }
 
-  case class Location(x: Int, y: Int)
+  case class Location(row: Int, col: Int) {
+    def translate(moveVector: MoveVector) = {
+      Location(row + moveVector.x, col + moveVector.y)
+    }
+  }
   
   object Location {
     implicit val rw: ReadWriter[Location] = macroRW
   }
 
-  // TODO: Use board class, and make (SquareType, Option[Piece]) its own class
   def validMoves(
-    board: Vector[Vector[(SquareType, Option[Piece])]],
+    board: BoardWithPieces,
     pieceLocation: Location,
     piece: Piece
   ): Set[Location] = {
 
     piece.pieceType.moves.flatMap { moveVector =>
-      getValid(mutable.Set.empty[Location], board, pieceLocation, moveVector)
+      getValidAlongVector(mutable.Set.empty[Location], board, pieceLocation, moveVector)
     }
   }
 
-  def getValid(
+  @tailrec def getValidAlongVector(
     state: mutable.Set[Location],
-    board: Vector[Vector[(SquareType, Option[Piece])]],
+    board: BoardWithPieces,
     location: Location,
     moveVector: MoveVector
   ): Set[Location] = {
 
-    Set()
+    val nextSquareLocation = location.translate(moveVector)
+    val nextSquare = board.getSquare(nextSquareLocation)
+
+    nextSquare match {
+      case None => state.toSet
+      case Some(square) => {
+        if (!square.canMoveOnto || board.pieces.contains(nextSquareLocation)) state.toSet
+        else if (!square.canPassThrough) (state + nextSquareLocation).toSet
+        else {
+          getValidAlongVector(state + nextSquareLocation, board, nextSquareLocation, moveVector)
+        }
+      }
+    }
   }
 
   val defaultPieces: Map[Location, Piece] = Map(
