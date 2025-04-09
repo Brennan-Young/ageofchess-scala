@@ -38,7 +38,7 @@ class GameStateRenderer(val gameState: ClientGame) {
           }
         )
       },
-      onClick.map { event => findSquare(event.target).map(event -> _) } --> clickBus.writer,
+      onClick.map { event => println("click event seen"); findSquare(event.target).map(event -> _) } --> clickBus.writer,
       clickEvents --> clickEffects,
       onMountCallback { ctx =>
         gameState.connection.socket.onmessage = event => {
@@ -76,8 +76,11 @@ class GameStateRenderer(val gameState: ClientGame) {
   val dragBus = new EventBus[(dom.DragEvent, Location, Piece)]
   val dragEvents = dragBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
   val dragEffects = Observer[(dom.DragEvent, Location, Piece, Boolean)](onNext = { case (e, loc, piece, canMove) =>
+    println(gameState.selectedPiece.now())
+    println(canMove)
     if (canMove) {
       gameState.selectedPiece.set(Some(loc, piece))
+      println(gameState.selectedPiece.now())
     } else {
       e.preventDefault()
     }
@@ -119,6 +122,7 @@ class GameStateRenderer(val gameState: ClientGame) {
       cls := "board-square",
       dataAttr("row") := location.row.toString,
       dataAttr("col") := location.col.toString,
+      draggable := true,
       backgroundImage := s"url(/assets/${square.asset})",
       piece.map { p =>
         img(
@@ -130,19 +134,22 @@ class GameStateRenderer(val gameState: ClientGame) {
           dragEvents --> dragEffects
         )
       },
-      if (isValidMoveOfCurrentSelection) {
-        div(
-          cls := "valid-move-marker"
-        )
-      } else {
-        emptyNode
+      onDragOver.preventDefault --> { _ =>
+        println(gameState.selectedPiece.now() + " " + location)  
       },
-      onDragOver.preventDefault --> { _ => },
       onDrop.preventDefault --> { _ =>
+        println(gameState.selectedPiece.now())
         gameState.selectedPiece.now().foreach { case (position, piece) =>
           drop(position, location)
         }
       }
+      // if (isValidMoveOfCurrentSelection) {
+      //   div(
+      //     cls := "valid-move-marker"
+      //   )
+      // } else {
+      //   emptyNode
+      // }
     )
   }
 
