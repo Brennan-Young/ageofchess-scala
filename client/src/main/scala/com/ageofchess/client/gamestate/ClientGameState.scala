@@ -54,11 +54,27 @@ class ClientGame(
     case _ => Set.empty[Location]
   }
 
-  val boardSignal = Signal.combine(boardVar.signal, piecesVar.signal, validMovesSignal).map {
-    case (Some(board), pieces, validMovesOfSelection) =>
-      Some((board, pieces, validMovesOfSelection))
+  // val boardSignal = Signal.combine(boardVar.signal, piecesVar.signal, validMovesSignal).map {
+  //   case (Some(board), pieces, validMovesOfSelection) =>
+  //     Some((board, pieces, validMovesOfSelection))
+  //   case _ => None
+  // }
+
+  val boardSignal = Signal.combine(boardVar.signal, piecesVar.signal).map {
+    case (Some(board), pieces) =>
+      Some((board, pieces, Set.empty[Location]))
     case _ => None
   }
+
+  // val boardSignal = Signal.combine(boardVar.signal, piecesVar.signal, selectedPiece.signal).map {
+  //   case (Some(board), pieces, Some((location, piece))) => {
+  //     Some((board, pieces, validMoves(BoardWithPieces(board, pieces), location, piece)))
+  //   }
+  //   case (Some(board), pieces, None) => {
+  //     Some((board, pieces, Set.empty[Location]))
+  //   }
+  //   case _ => None
+  // }
 
   val boardStateSignal = Signal.combine(boardVar.signal, piecesVar.signal).map {
     case (Some(board), pieces) => {

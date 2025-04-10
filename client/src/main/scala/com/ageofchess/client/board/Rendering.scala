@@ -12,10 +12,9 @@ import upickle.default._ // remove later
 
 class GameStateRenderer(val gameState: ClientGame) {
   def render(
-    // boardState: Vector[Vector[(SquareType, Option[Piece])]]
     board: Vector[Vector[SquareType]],
-    pieces: Map[Location, Piece],
-    validMovesOfSelection: Set[Location]
+    piecesSignal: Signal[Map[Location, Piece]],
+    validMovesOfSelectionSignal: Signal[Set[Location]]
   ): HtmlElement = {
     val numColumns = board.headOption.map(_.size).getOrElse(0)
 
@@ -32,8 +31,8 @@ class GameStateRenderer(val gameState: ClientGame) {
             renderSquare(
               location,
               renderableSquare,
-              pieces.get(location),
-              validMovesOfSelection.contains(location)
+              piecesSignal.map(pieces => pieces.get(location)),
+              validMovesOfSelectionSignal.map(validMoves => validMoves.contains(location))
             )
           }
         )
@@ -77,10 +76,8 @@ class GameStateRenderer(val gameState: ClientGame) {
   val dragEvents = dragBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
   val dragEffects = Observer[(dom.DragEvent, Location, Piece, Boolean)](onNext = { case (e, loc, piece, canMove) =>
     println(gameState.selectedPiece.now())
-    println(canMove)
     if (canMove) {
       gameState.selectedPiece.set(Some(loc, piece))
-      println(gameState.selectedPiece.now())
     } else {
       e.preventDefault()
     }
@@ -115,41 +112,44 @@ class GameStateRenderer(val gameState: ClientGame) {
   def renderSquare(
     location: Location,
     square: RenderableSquare,
-    piece: Option[Piece],
-    isValidMoveOfCurrentSelection: Boolean
+    pieceSignal: Signal[Option[Piece]],
+    isValidMoveOfCurrentSelectionSignal: Signal[Boolean]
   ): HtmlElement = {
+    println("rendering: " + location)
+
     div(
       cls := "board-square",
       dataAttr("row") := location.row.toString,
       dataAttr("col") := location.col.toString,
       draggable := true,
       backgroundImage := s"url(/assets/${square.asset})",
-      piece.map { p =>
-        img(
-          src := s"/assets/pieces/${p.asset}",
-          cls := "piece",
-          // TODO: this doesn't work remotely as intended, need to read up on animations more
-          // styleAttr := s"transform: translate(${location.y * 50}px, ${location.x}px);",
-          onDragStart.map(e => (e, location, p)) --> dragBus.writer,
-          dragEvents --> dragEffects
-        )
-      },
-      onDragOver.preventDefault --> { _ =>
-        println(gameState.selectedPiece.now() + " " + location)  
-      },
+      onDragOver.preventDefault --> { _ => },
       onDrop.preventDefault --> { _ =>
-        println(gameState.selectedPiece.now())
         gameState.selectedPiece.now().foreach { case (position, piece) =>
           drop(position, location)
         }
+      },
+      child.maybe <-- pieceSignal.map { piece =>
+        piece.map { p => 
+          img(
+            src := s"/assets/pieces/${p.asset}",
+            cls := "piece",
+            // TODO: this doesn't work remotely as intended, need to read up on animations more
+            // styleAttr := s"transform: translate(${location.y * 50}px, ${location.x}px);",
+            onDragStart.map(e => (e, location, p)) --> dragBus.writer,
+            dragEvents --> dragEffects
+          )
+        }
+      },
+      child <-- isValidMoveOfCurrentSelectionSignal.map { isValidMove =>
+        if (isValidMove) {
+          div(
+            cls := "valid-move-marker"
+          )
+        } else {
+          emptyNode
+        }
       }
-      // if (isValidMoveOfCurrentSelection) {
-      //   div(
-      //     cls := "valid-move-marker"
-      //   )
-      // } else {
-      //   emptyNode
-      // }
     )
   }
 
