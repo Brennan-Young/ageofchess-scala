@@ -19,42 +19,45 @@ class GameStateRenderer(val gameState: ClientGame) {
     val numColumns = board.headOption.map(_.size).getOrElse(0)
 
     div(
-      cls := "board",
-      styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
-      board.zipWithIndex.map { case (row, rIdx) =>
-        div(
-          cls := "board-row",
-          row.zipWithIndex.map { case (square, cIdx) =>
-            val squareColor = if ((rIdx + cIdx) % 2 == 0) Grass else Dirt
-            val renderableSquare = RenderableSquare(squareColor, square)
-            val location = Location(rIdx, cIdx)
-            renderSquare(
-              location,
-              renderableSquare,
-              piecesSignal.map(pieces => pieces.get(location)),
-              validMovesOfSelectionSignal.map(validMoves => validMoves.contains(location))
-            )
-          }
-        )
-      },
-      onClick.map { event => println("click event seen"); findSquare(event.target).map(event -> _) } --> clickBus.writer,
-      clickEvents --> clickEffects,
-      onMountCallback { ctx =>
-        gameState.connection.socket.onmessage = event => {
-          val message: GameMessage = read[GameMessage](event.data.toString)
-          val playerToMove = gameState.playerToMoveSignal.observe(ctx.owner)
-          println(s"Received game message: $message")
-          message match {
-            case UpdatePieces(nextActivePlayer, pieces) => {
-              gameState.piecesVar.set(pieces)
-              if (nextActivePlayer == gameState.player && playerToMove.now() != gameState.player) {
-                gameState.moveTurnBus.emit()
-              }
+      h1(s"You are playing as ${gameState.player.color.toString}"),
+      div(
+        cls := "board",
+        styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
+        board.zipWithIndex.map { case (row, rIdx) =>
+          div(
+            cls := "board-row",
+            row.zipWithIndex.map { case (square, cIdx) =>
+              val squareColor = if ((rIdx + cIdx) % 2 == 0) Grass else Dirt
+              val renderableSquare = RenderableSquare(squareColor, square)
+              val location = Location(rIdx, cIdx)
+              renderSquare(
+                location,
+                renderableSquare,
+                piecesSignal.map(pieces => pieces.get(location)),
+                validMovesOfSelectionSignal.map(validMoves => validMoves.contains(location))
+              )
             }
-            case _ =>
+          )
+        },
+        onClick.map { event => println("click event seen"); findSquare(event.target).map(event -> _) } --> clickBus.writer,
+        clickEvents --> clickEffects,
+        onMountCallback { ctx =>
+          gameState.connection.socket.onmessage = event => {
+            val message: GameMessage = read[GameMessage](event.data.toString)
+            val playerToMove = gameState.playerToMoveSignal.observe(ctx.owner)
+            println(s"Received game message: $message")
+            message match {
+              case UpdatePieces(nextActivePlayer, pieces) => {
+                gameState.piecesVar.set(pieces)
+                if (nextActivePlayer == gameState.player && playerToMove.now() != gameState.player) {
+                  gameState.moveTurnBus.emit()
+                }
+              }
+              case _ =>
+            }
           }
         }
-      }
+      )
     )
   }
 
@@ -75,8 +78,7 @@ class GameStateRenderer(val gameState: ClientGame) {
   val dragBus = new EventBus[(dom.DragEvent, Location, Piece)]
   val dragEvents = dragBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
   val dragEffects = Observer[(dom.DragEvent, Location, Piece, Boolean)](onNext = { case (e, loc, piece, canMove) =>
-    println(gameState.selectedPiece.now())
-    if (canMove) {
+    if (canMove && piece.color == gameState.player.color) {
       gameState.selectedPiece.set(Some(loc, piece))
     } else {
       e.preventDefault()
@@ -109,6 +111,16 @@ class GameStateRenderer(val gameState: ClientGame) {
     }
   })
 
+  val dropBus = new EventBus[Location]
+  val dropEffects = Observer[(Location, Boolean, Option[(Location, Piece)])](onNext = { case (toLoc, isValidMove, selectedPiece) =>
+    println(toLoc, isValidMove, selectedPiece)
+    selectedPiece match {
+      case Some((fromLoc, piece)) if isValidMove => drop(fromLoc, toLoc)
+      case _ =>
+    }
+  })
+
+
   def renderSquare(
     location: Location,
     square: RenderableSquare,
@@ -124,11 +136,11 @@ class GameStateRenderer(val gameState: ClientGame) {
       draggable := true,
       backgroundImage := s"url(/assets/${square.asset})",
       onDragOver.preventDefault --> { _ => },
-      onDrop.preventDefault --> { _ =>
-        gameState.selectedPiece.now().foreach { case (position, piece) =>
-          drop(position, location)
-        }
-      },
+      onDrop.preventDefault.mapTo(location) --> dropBus.writer,
+      dropBus
+        .events
+        .withCurrentValueOf(isValidMoveOfCurrentSelectionSignal, gameState.selectedPiece.signal)
+        .filter { case (toLoc, isValid, selectedPiece) => toLoc == location } --> dropEffects,
       child.maybe <-- pieceSignal.map { piece =>
         piece.map { p => 
           img(
