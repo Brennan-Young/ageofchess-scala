@@ -39,7 +39,7 @@ class GameStateRenderer(val gameState: ClientGame) {
             }
           )
         },
-        onClick.map { event => println("click event seen"); findSquare(event.target).map(event -> _) } --> clickBus.writer,
+        onClick.map { event => findSquare(event.target).map(event -> _) } --> clickBus.writer,
         clickEvents --> clickEffects,
         onMountCallback { ctx =>
           gameState.connection.socket.onmessage = event => {
@@ -113,7 +113,6 @@ class GameStateRenderer(val gameState: ClientGame) {
 
   val dropBus = new EventBus[Location]
   val dropEffects = Observer[(Location, Boolean, Option[(Location, Piece)])](onNext = { case (toLoc, isValidMove, selectedPiece) =>
-    println(toLoc, isValidMove, selectedPiece)
     selectedPiece match {
       case Some((fromLoc, piece)) if isValidMove => drop(fromLoc, toLoc)
       case _ =>
@@ -127,7 +126,6 @@ class GameStateRenderer(val gameState: ClientGame) {
     pieceSignal: Signal[Option[Piece]],
     isValidMoveOfCurrentSelectionSignal: Signal[Boolean]
   ): HtmlElement = {
-    println("rendering: " + location)
 
     div(
       cls := "board-square",

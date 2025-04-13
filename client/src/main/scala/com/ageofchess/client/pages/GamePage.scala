@@ -25,7 +25,6 @@ class GamePage(val gameId: String, val pendingGame: PendingClientGame) {
           
           clientGame.boardVar.signal.map {
             case Some(board) => {
-              println("board now renderable")
               new GameStateRenderer(clientGame).render(board, clientGame.piecesVar.signal, clientGame.validMovesSignal)
             }
             case _ => div("Loading")
