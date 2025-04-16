@@ -139,7 +139,7 @@ object Server extends MainRoutes {
     val (p1, p2) = if (coin == 1) (pendingGame.player1, playerId) else (playerId, pendingGame.player1)
     val player1 = Player(p1, White)
     val player2 = Player(p2, Black)
-    val board = defaultBoard2
+    val board = defaultBoard3
     val pieces = mutable.Map(defaultPieces.toSeq: _*)
 
     val game = Game(

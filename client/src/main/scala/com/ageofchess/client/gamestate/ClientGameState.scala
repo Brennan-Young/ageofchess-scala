@@ -49,6 +49,13 @@ class ClientGame(
     }
     case _ => Set.empty[Location]
   }
+
+  val validCapturesSignal = Signal.combine(boardVar.signal, piecesVar.signal, selectedPiece.signal).map {
+    case (Some(board), pieces, Some((location, piece))) => {
+      validCaptures(BoardWithPieces(board, pieces), location, piece)
+    }
+    case _ => Set.empty[Location]
+  }
 }
 
 class PendingClientGame(

@@ -58,11 +58,11 @@ object GameEvents {
 
     clickBus
       .events
-      .withCurrentValueOf(gameState.isPlayerTurnSignal, gameState.piecesVar.signal)
+      .withCurrentValueOf(gameState.isPlayerTurnSignal, gameState.piecesVar.signal, gameState.validMovesSignal)
       .collect {
         // if the square we've selected has a piece in it, or if we've currently selected a piece - 
         // that is, discard the clicks where a player clicks an empty square with no selected piece
-        case (Some((event, location)), canMove, pieces) if (pieces.contains(location) || gameState.selectedPiece.now().isDefined) =>
+        case (Some((event, location)), canMove, pieces, validMoves) if (pieces.contains(location) || (gameState.selectedPiece.now().isDefined && validMoves.contains(location))) =>
           (event, location, canMove, pieces.get(location))
       }
   }

@@ -207,6 +207,7 @@ package object piece {
       case Some(square) => {
         if (!square.canMoveOnto || board.pieces.contains(nextSquareLocation)) state.toSet
         else if (!square.canPassThrough) (state + nextSquareLocation).toSet
+        else if (!moveVector.infinite) (state + nextSquareLocation).toSet
         else {
           getValidAlongVector(state + nextSquareLocation, board, nextSquareLocation, moveVector)
         }
@@ -214,8 +215,47 @@ package object piece {
     }
   }
 
+  def validCaptures(
+    board: BoardWithPieces,
+    pieceLocation: Location,
+    piece: Piece
+  ): Set[Location] = {
+    
+    piece.pieceType.captures.flatMap { moveVector =>
+      getValidCaptureAlongVector(piece, pieceLocation, board, moveVector)  
+    }
+  }
+
+  @tailrec def getValidCaptureAlongVector(
+    piece: Piece,
+    location: Location,
+    board: BoardWithPieces,
+    moveVector: MoveVector
+  ): Option[Location] = {
+
+    val nextSquareLocation = location.translate(moveVector)
+    val nextSquare = board.getSquare(nextSquareLocation)
+
+    nextSquare match {
+      case None => None
+      case Some(square) => {
+        if (!square.canMoveOnto) None
+        else if (board.pieces.get(nextSquareLocation).exists(p => p.color == piece.color)) None
+        else if (board.pieces.get(nextSquareLocation).exists(p => p.color != piece.color)) Some(nextSquareLocation)
+        else if (!square.canPassThrough) None // can't pass through, and there's no piece there
+        else if (!moveVector.infinite) None
+        else {
+          getValidCaptureAlongVector(piece, nextSquareLocation, board, moveVector)
+        }
+      }
+    }
+  }
+
   val defaultPieces: Map[Location, Piece] = Map(
     Location(0, 0) -> Piece(White, King),
-    Location(1, 3) -> Piece(Black, King)
+    Location(1, 3) -> Piece(Black, King),
+    Location(4, 5) -> Piece(White, Bishop),
+    Location(3, 4) -> Piece(White, Rook),
+    Location(2, 3) -> Piece(Black, Knight)
   )
 }

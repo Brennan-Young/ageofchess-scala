@@ -87,6 +87,17 @@ package object board {
     )
   )
 
+  val defaultBoard3: Board = Board(
+    Vector(
+      Vector(Terrain, Terrain, Terrain, Terrain, Terrain, Terrain),
+      Vector(Terrain, Trees, Terrain, Terrain, Rocks, Terrain),
+      Vector(Terrain, Terrain, Terrain, Terrain, Terrain, Terrain),
+      Vector(Terrain, Terrain, Rocks, Rocks, Terrain, Terrain),
+      Vector(Trees, Trees, Terrain, Terrain, Terrain, Terrain),
+      Vector(Terrain, Terrain, Terrain, Terrain, Terrain, Terrain)
+    )
+  )
+
   val defaultRenderableBoard = defaultBoard.toRenderable
 
   case class Board(squares: Vector[Vector[SquareType]]) {
