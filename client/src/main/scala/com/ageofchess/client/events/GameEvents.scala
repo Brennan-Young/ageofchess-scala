@@ -9,9 +9,9 @@ import upickle.default._
 
 object GameEvents {
   
-  def mouseDragStartBus = new EventBus[(dom.DragEvent, Location, Piece)]
-  def mouseDragDropBus = new EventBus[Location]
-  def mouseClickBus = new EventBus[(Option[(dom.MouseEvent, Location)])]
+  val mouseDragStartBus = new EventBus[(dom.DragEvent, Location, Piece)]
+  val mouseDragDropBus = new EventBus[Location]
+  val mouseClickBus = new EventBus[(Option[(dom.MouseEvent, Location)])]
 
   def mouseDragStartEvents(
     dragBus: EventBus[(dom.DragEvent, Location, Piece)],
@@ -31,6 +31,25 @@ object GameEvents {
         }
     }
   )
+
+  def mouseDragDropEvents(
+    dropBus: EventBus[Location],
+    isValidMoveOfCurrentSelectionSignal: Signal[Boolean],
+    selectedPieceSignal: Signal[Option[(Location, Piece)]],
+    location: Location
+  ) = {
+    dropBus
+      .events
+      .withCurrentValueOf(isValidMoveOfCurrentSelectionSignal, selectedPieceSignal)
+      .filter { case (toLoc, isValid, selectedPiece) => toLoc == location }
+  }
+
+  def mouseDragDropEffects(gameState: ClientGame) = Observer[(Location, Boolean, Option[(Location, Piece)])](onNext = { case (toLoc, isValidMove, selectedPiece) =>
+    selectedPiece match {
+      case Some((fromLoc, piece)) if isValidMove => movePiece(gameState, fromLoc, toLoc)
+      case _ =>
+    }
+  })
 
   def mouseClickEvents(
     clickBus: EventBus[Option[(dom.MouseEvent, Location)]],
@@ -53,7 +72,7 @@ object GameEvents {
   ) = Observer[(dom.MouseEvent, Location, Boolean, Option[Piece])](onNext = { case (e, loc, canMove, piece) =>
     if (canMove) {
       gameState.selectedPiece.now() match {
-        case Some((position, piece)) => drop(gameState, position, loc)
+        case Some((position, piece)) => movePiece(gameState, position, loc)
         // TODO: piece should exist if selectedPiece is None as clickEvents filtered out cases where this doesn't hold.
         // But should find a way to express better
         case None => gameState.selectedPiece.set(Some(loc, piece.get))
@@ -64,7 +83,7 @@ object GameEvents {
     }
   })
 
-  def drop(
+  def movePiece( 
     gameState: ClientGame,
     originalPosition: Location,
     newPosition: Location

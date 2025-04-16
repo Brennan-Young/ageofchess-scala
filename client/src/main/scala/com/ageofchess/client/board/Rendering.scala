@@ -9,6 +9,7 @@ import com.ageofchess.client.gamestate.ClientGame
 import org.scalajs.dom
 import scala.util.Try
 import upickle.default._ // remove later
+import com.ageofchess.client.events.GameEvents._
 
 class GameStateRenderer(val gameState: ClientGame) {
   def render(
@@ -39,8 +40,8 @@ class GameStateRenderer(val gameState: ClientGame) {
             }
           )
         },
-        onClick.map { event => findSquare(event.target).map(event -> _) } --> clickBus.writer,
-        clickEvents --> clickEffects,
+        onClick.map { event => findSquare(event.target).map(event -> _) } --> mouseClickBus.writer,
+        mouseClickEvents(mouseClickBus, gameState) --> mouseClickEffects(gameState),
         onMountCallback { ctx =>
           gameState.connection.socket.onmessage = event => {
             val message: GameMessage = read[GameMessage](event.data.toString)
@@ -75,51 +76,6 @@ class GameStateRenderer(val gameState: ClientGame) {
     }
   }
 
-  val dragBus = new EventBus[(dom.DragEvent, Location, Piece)]
-  val dragEvents = dragBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)
-  val dragEffects = Observer[(dom.DragEvent, Location, Piece, Boolean)](onNext = { case (e, loc, piece, canMove) =>
-    if (canMove && piece.color == gameState.player.color) {
-      gameState.selectedPiece.set(Some(loc, piece))
-    } else {
-      e.preventDefault()
-    }
-  })
-
-  val clickBus = new EventBus[Option[(dom.MouseEvent, Location)]]
-
-  val clickEvents = clickBus
-    .events
-    .withCurrentValueOf(gameState.isPlayerTurnSignal, gameState.piecesVar.signal)
-    .collect {
-      // if the square we've selected has a piece in it, or if we've currently selected a piece - 
-      // that is, discard the clicks where a player clicks an empty square with no selected piece
-      case (Some((event, location)), canMove, pieces) if (pieces.contains(location) || gameState.selectedPiece.now().isDefined) =>
-        (event, location, canMove, pieces.get(location))
-    }
-
-  val clickEffects = Observer[(dom.MouseEvent, Location, Boolean, Option[Piece])](onNext = { case (e, loc, canMove, piece) =>
-    if (canMove) {
-      gameState.selectedPiece.now() match {
-        case Some((position, piece)) => drop(position, loc)
-        // TODO: piece should exist if selectedPiece is None as clickEvents filtered out cases where this doesn't hold.
-        // But should find a way to express better
-        case None => gameState.selectedPiece.set(Some(loc, piece.get))
-      }
-    } else {
-      // Perhaps should also set the current piece to None
-      e.preventDefault()
-    }
-  })
-
-  val dropBus = new EventBus[Location]
-  val dropEffects = Observer[(Location, Boolean, Option[(Location, Piece)])](onNext = { case (toLoc, isValidMove, selectedPiece) =>
-    selectedPiece match {
-      case Some((fromLoc, piece)) if isValidMove => drop(fromLoc, toLoc)
-      case _ =>
-    }
-  })
-
-
   def renderSquare(
     location: Location,
     square: RenderableSquare,
@@ -131,14 +87,15 @@ class GameStateRenderer(val gameState: ClientGame) {
       cls := "board-square",
       dataAttr("row") := location.row.toString,
       dataAttr("col") := location.col.toString,
-      draggable := true,
       backgroundImage := s"url(/assets/${square.asset})",
       onDragOver.preventDefault --> { _ => },
-      onDrop.preventDefault.mapTo(location) --> dropBus.writer,
-      dropBus
-        .events
-        .withCurrentValueOf(isValidMoveOfCurrentSelectionSignal, gameState.selectedPiece.signal)
-        .filter { case (toLoc, isValid, selectedPiece) => toLoc == location } --> dropEffects,
+      onDrop.preventDefault.mapTo(location) --> mouseDragDropBus.writer,
+      mouseDragDropEvents(
+        mouseDragDropBus,
+        isValidMoveOfCurrentSelectionSignal,
+        gameState.selectedPiece.signal,
+        location
+      ) --> mouseDragDropEffects(gameState),
       child.maybe <-- pieceSignal.map { piece =>
         piece.map { p => 
           img(
@@ -146,8 +103,8 @@ class GameStateRenderer(val gameState: ClientGame) {
             cls := "piece",
             // TODO: this doesn't work remotely as intended, need to read up on animations more
             // styleAttr := s"transform: translate(${location.y * 50}px, ${location.x}px);",
-            onDragStart.map(e => (e, location, p)) --> dragBus.writer,
-            dragEvents --> dragEffects
+            onDragStart.map(e => (e, location, p)) --> mouseDragStartBus.writer,
+            mouseDragStartEvents(mouseDragStartBus, gameState) --> mouseDragStartEffects(gameState)
           )
         }
       },
@@ -161,24 +118,5 @@ class GameStateRenderer(val gameState: ClientGame) {
         }
       }
     )
-  }
-
-  def drop(
-    originalPosition: Location,
-    newPosition: Location
-  ): Unit = {
-    if (newPosition != originalPosition) {
-      gameState.piecesVar.update { pieces =>
-        pieces.get(originalPosition).map { pieceToMove =>
-          pieces - originalPosition + (newPosition -> pieceToMove)
-        }.getOrElse(pieces)
-      }
-      gameState.connection.socket.send(write(MovePiece(gameState.player, originalPosition, newPosition)))
-      gameState.selectedPiece.set(None)
-      gameState.moveTurnBus.emit()
-    } 
-    else {
-      gameState.selectedPiece.set(None)
-    }
   }
 }
