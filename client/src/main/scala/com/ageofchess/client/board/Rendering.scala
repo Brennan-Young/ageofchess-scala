@@ -83,6 +83,16 @@ class GameStateRenderer(val gameState: ClientGame) {
     isValidMoveOfCurrentSelectionSignal: Signal[Boolean]
   ): HtmlElement = {
 
+    val isValidCaptureOfCurrentSelectionSignal: Signal[Boolean] = gameState.validCapturesSignal.map { captures =>
+      captures.contains(location)  
+    }
+
+    val isValidMoveOrCapture: Signal[Boolean] = Signal.combine(
+      isValidMoveOfCurrentSelectionSignal,
+      isValidCaptureOfCurrentSelectionSignal
+    )
+      .map { case (validMove, validCapture) => validMove || validCapture }
+
     div(
       cls := "board-square",
       dataAttr("row") := location.row.toString,
@@ -92,7 +102,7 @@ class GameStateRenderer(val gameState: ClientGame) {
       onDrop.preventDefault.mapTo(location) --> mouseDragDropBus.writer,
       mouseDragDropEvents(
         mouseDragDropBus,
-        isValidMoveOfCurrentSelectionSignal,
+        isValidMoveOrCapture,
         gameState.selectedPiece.signal,
         location
       ) --> mouseDragDropEffects(gameState),
@@ -112,6 +122,15 @@ class GameStateRenderer(val gameState: ClientGame) {
         if (isValidMove) {
           div(
             cls := "valid-move-marker"
+          )
+        } else {
+          emptyNode
+        }
+      },
+      child <-- isValidCaptureOfCurrentSelectionSignal.map { isValid => 
+        if (isValid) {
+          div(
+            cls := "valid-capture-marker"
           )
         } else {
           emptyNode
