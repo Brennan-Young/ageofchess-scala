@@ -58,6 +58,19 @@ class GameStateRenderer(val gameState: ClientGame) {
             }
           }
         }
+      ),
+      div(
+        cls := "piece-tray",
+        (gameState.player.color match {
+          case White => whiteBuyablePieces
+          case Black => blackBuyablePieces
+        }).map { piece =>
+          img(
+            src := s"/assets/pieces/${piece.asset}",
+            cls := "tray-piece",
+            draggable := true
+          )
+        }
       )
     )
   }

@@ -171,6 +171,17 @@ package object piece {
     implicit val rw: ReadWriter[Piece] = macroRW
   }
 
+  val buyablePieces: List[PieceType] = List(
+    Pawn,
+    Knight,
+    Bishop,
+    Rook,
+    Queen
+  )
+
+  val whiteBuyablePieces = buyablePieces.map { p => Piece(White, p) }
+  val blackBuyablePieces = buyablePieces.map { p => Piece(Black, p) }
+
   case class Location(row: Int, col: Int) {
     def translate(moveVector: MoveVector) = {
       Location(row + moveVector.x, col + moveVector.y)
