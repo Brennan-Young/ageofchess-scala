@@ -54,7 +54,7 @@ object GameEvents {
   def mouseClickEvents(
     clickBus: EventBus[Option[(dom.MouseEvent, Location)]],
     gameState: ClientGame
-  ): EventStream[(dom.MouseEvent, Location, Boolean, Option[Piece])] = {
+  ): EventStream[(dom.MouseEvent, Location, Color, Boolean, Option[Piece], Set[Location], Set[Location])] = {
 
     clickBus
       .events
@@ -62,24 +62,29 @@ object GameEvents {
       .collect {
         // if the square we've selected has a piece in it, or if we've currently selected a piece - 
         // that is, discard the clicks where a player clicks an empty square with no selected piece
-        case (Some((event, location)), canMove, pieces, validMoves, validCaptures) if (
-          pieces.contains(location) ||
-          (gameState.selectedPiece.now().isDefined &&
-          (validMoves.contains(location) || validCaptures.contains(location)))
+        case (Some((event, location)), isPlayerTurn, pieces, validMoves, validCaptures) if (
+          (pieces.contains(location) && !gameState.selectedPiece.now().isDefined) ||
+          (gameState.selectedPiece.now().isDefined)
+          // (validMoves.contains(location) || validCaptures.contains(location)))
         ) =>
-          (event, location, canMove, pieces.get(location))
+          (event, location, gameState.player.color, isPlayerTurn, pieces.get(location), validMoves, validCaptures)
       }
   }
 
   def mouseClickEffects(
     gameState: ClientGame
-  ) = Observer[(dom.MouseEvent, Location, Boolean, Option[Piece])](onNext = { case (e, loc, canMove, piece) =>
-    if (canMove) {
+  ) = Observer[(dom.MouseEvent, Location, Color, Boolean, Option[Piece], Set[Location], Set[Location])](onNext = { case (e, loc, playerColor, isPlayerTurn, piece, validMoves, validCaptures) =>
+    if (isPlayerTurn) {
       gameState.selectedPiece.now() match {
-        case Some((position, piece)) => movePiece(gameState, position, loc)
+        case Some((position, _)) if (validMoves.contains(loc) || validCaptures.contains(loc)) => movePiece(gameState, position, loc)
+        case Some((position, _)) if loc == position => gameState.selectedPiece.set(None) // deselect current piece
+        case Some((position, _)) if piece.map(_.color).contains(playerColor) => gameState.selectedPiece.set(Some(loc, piece.get)) // player selected new piece
+        case Some((position, _)) => // not a valid move nor a deselection, keep piece selected
         // TODO: piece should exist if selectedPiece is None as clickEvents filtered out cases where this doesn't hold.
         // But should find a way to express better
-        case None => gameState.selectedPiece.set(Some(loc, piece.get))
+        case None => {
+          if (piece.get.color == playerColor) gameState.selectedPiece.set(Some(loc, piece.get))
+        }
       }
     } else {
       // Perhaps should also set the current piece to None
