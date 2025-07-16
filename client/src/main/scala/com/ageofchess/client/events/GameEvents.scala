@@ -65,7 +65,6 @@ object GameEvents {
         case (Some((event, location)), isPlayerTurn, pieces, validMoves, validCaptures) if (
           (pieces.contains(location) && !gameState.selectedPiece.now().isDefined) ||
           (gameState.selectedPiece.now().isDefined)
-          // (validMoves.contains(location) || validCaptures.contains(location)))
         ) =>
           (event, location, gameState.player.color, isPlayerTurn, pieces.get(location), validMoves, validCaptures)
       }
@@ -78,12 +77,13 @@ object GameEvents {
       gameState.selectedPiece.now() match {
         case Some((position, _)) if (validMoves.contains(loc) || validCaptures.contains(loc)) => movePiece(gameState, position, loc)
         case Some((position, _)) if loc == position => gameState.selectedPiece.set(None) // deselect current piece
-        case Some((position, _)) if piece.map(_.color).contains(playerColor) => gameState.selectedPiece.set(Some(loc, piece.get)) // player selected new piece
-        case Some((position, _)) => // not a valid move nor a deselection, keep piece selected
-        // TODO: piece should exist if selectedPiece is None as clickEvents filtered out cases where this doesn't hold.
-        // But should find a way to express better
-        case None => {
-          if (piece.get.color == playerColor) gameState.selectedPiece.set(Some(loc, piece.get))
+        case _ => {
+          // covers case where player has a piece selected and selects a piece of the same color or no piece is selected
+          // piece should be defined if selectedPiece is None as clickEvents filtered out cases where this doesn't hold.
+          // no-op if no piece is defined
+          piece.foreach { p =>
+            if (p.color == playerColor) gameState.selectedPiece.set(Some(loc, p))
+          }
         }
       }
     } else {
