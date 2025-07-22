@@ -120,6 +120,11 @@ package object board {
     pieces: Map[Location, Piece]
   ) {
 
+    def getKing(color: Color): Option[Location] = pieces.find { case (loc, piece) =>
+      piece.color == color && piece.pieceType == King  
+    }
+      .map(_._1)
+
     def getSquare(square: Location): Option[SquareType] = {
       squares.lift(square.row).flatMap { row =>
         row.lift(square.col)

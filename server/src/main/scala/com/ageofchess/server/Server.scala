@@ -107,6 +107,14 @@ object Server extends MainRoutes {
         val serverMessage = UpdatePieces(game.playerToMove, game.pieces.toMap)
         broadcastToPlayers(game, write(serverMessage))
       }
+      case PlacePiece(player, piece, location) => {
+        if (player == game.playerToMove) {
+          game.pieces.update(location, piece)
+          game.changeActivePlayer
+        } else {}
+        val serverMessage = UpdatePieces(game.playerToMove, game.pieces.toMap)
+        broadcastToPlayers(game, write(serverMessage))
+      }
     }
   }
 

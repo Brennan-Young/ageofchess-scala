@@ -48,4 +48,9 @@ object Messages {
   object MovePiece {
     implicit val rw: ReadWriter[MovePiece] = macroRW
   }
+
+  case class PlacePiece(player: Player, piece: Piece, location: Location) extends ClientMessage
+  object PlacePiece {
+    implicit val rw: ReadWriter[PlacePiece] = macroRW
+  }
 }

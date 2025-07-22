@@ -34,6 +34,17 @@ package object piece {
     infinite: Boolean
   )
 
+  val directions: Set[MoveVector] = Set(
+    MoveVector(1, 1, false),
+    MoveVector(1, -1, false),
+    MoveVector(-1, -1, false),
+    MoveVector(-1, 1, false),
+    MoveVector(1, 0, false),
+    MoveVector(0, 1, false),
+    MoveVector(-1, 0, false),
+    MoveVector(0, -1, false)
+  )
+
   trait PieceType {
     def id: String
 
@@ -192,6 +203,46 @@ package object piece {
     implicit val rw: ReadWriter[Location] = macroRW
   }
 
+  def validPiecePlacements(
+    board: BoardWithPieces,
+    pieceToPlace: Piece
+  ): Set[Location] = {
+    pieceToPlace.pieceType match {
+      case Pawn => {
+        board.pieces.flatMap { case (loc, piece) =>
+          if (piece.color == pieceToPlace.color) {
+            directions.map { dir =>
+              val square = loc.translate(dir)
+              board.getSquare(square).map(square -> _)
+            }
+              .flatten
+              .filter { case (location, square) =>
+                square.canMoveOnto && !board.pieces.contains(location)
+              }
+              .map(_._1)
+          } else Set.empty[Location]
+        }
+          .toSet
+      }
+      case _ => {
+        board.getKing(pieceToPlace.color) match { 
+          case Some(loc) =>
+            directions.map { dir =>
+              val square = loc.translate(dir)
+              board.getSquare(square).map(square -> _)  
+            } 
+              .flatten
+              .filter { case (location, square) =>
+                square.canMoveOnto && !board.pieces.contains(location)  
+              }
+              .map(_._1)
+          case None => Set.empty[Location]
+        }
+      }
+        .toSet
+    }
+  }
+
   def validMoves(
     board: BoardWithPieces,
     pieceLocation: Location,
@@ -266,7 +317,7 @@ package object piece {
     Location(0, 0) -> Piece(White, King),
     Location(1, 3) -> Piece(Black, King),
     Location(4, 5) -> Piece(White, Bishop),
-    Location(3, 4) -> Piece(White, Rook),
+    Location(2, 4) -> Piece(White, Rook),
     Location(2, 3) -> Piece(Black, Knight)
   )
 }

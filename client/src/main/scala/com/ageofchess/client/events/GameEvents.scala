@@ -9,22 +9,22 @@ import upickle.default._
 
 object GameEvents {
   
-  val mouseDragStartBus = new EventBus[(dom.DragEvent, Location, Piece)]
+  val mouseDragStartBus = new EventBus[(dom.DragEvent, Option[Location], Piece)]
   val mouseDragDropBus = new EventBus[Location]
   val mouseClickBus = new EventBus[(Option[(dom.MouseEvent, Location)])]
 
   def mouseDragStartEvents(
-    dragBus: EventBus[(dom.DragEvent, Location, Piece)],
+    dragBus: EventBus[(dom.DragEvent, Option[Location], Piece)],
     gameState: ClientGame
-  ): EventStream[(dom.DragEvent, Location, Piece, Boolean)] = {
+  ): EventStream[(dom.DragEvent, Option[Location], Piece, Boolean)] = {
 
     dragBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)  
   }
 
-  def mouseDragStartEffects(gameState: ClientGame) = Observer[(dom.DragEvent, Location, Piece, Boolean)](onNext = 
+  def mouseDragStartEffects(gameState: ClientGame) = Observer[(dom.DragEvent, Option[Location], Piece, Boolean)](onNext = 
     {
-      case (event, loc, piece, canMove) =>
-        if (canMove && piece.color == gameState.player.color) {
+      case (event, loc, piece, isPlayerTurn) =>
+        if (isPlayerTurn && piece.color == gameState.player.color) {
           gameState.selectedPiece.set(Some(loc, piece))
         } else {
           event.preventDefault()
@@ -35,7 +35,7 @@ object GameEvents {
   def mouseDragDropEvents(
     dropBus: EventBus[Location],
     isValidMoveOfCurrentSelectionSignal: Signal[Boolean],
-    selectedPieceSignal: Signal[Option[(Location, Piece)]],
+    selectedPieceSignal: Signal[Option[(Option[Location], Piece)]],
     location: Location
   ) = {
     dropBus
@@ -44,9 +44,10 @@ object GameEvents {
       .filter { case (toLoc, isValid, selectedPiece) => toLoc == location }
   }
 
-  def mouseDragDropEffects(gameState: ClientGame) = Observer[(Location, Boolean, Option[(Location, Piece)])](onNext = { case (toLoc, isValidMove, selectedPiece) =>
+  def mouseDragDropEffects(gameState: ClientGame) = Observer[(Location, Boolean, Option[(Option[Location], Piece)])](onNext = { case (toLoc, isValidMove, selectedPiece) =>
     selectedPiece match {
-      case Some((fromLoc, piece)) if isValidMove => movePiece(gameState, fromLoc, toLoc)
+      case Some((Some(fromLoc), piece)) if isValidMove => movePiece(gameState, fromLoc, toLoc)
+      case Some((None, piece)) if isValidMove => placePiece(gameState, piece, toLoc)
       case _ =>
     }
   })
@@ -75,14 +76,14 @@ object GameEvents {
   ) = Observer[(dom.MouseEvent, Location, Color, Boolean, Option[Piece], Set[Location], Set[Location])](onNext = { case (e, loc, playerColor, isPlayerTurn, piece, validMoves, validCaptures) =>
     if (isPlayerTurn) {
       gameState.selectedPiece.now() match {
-        case Some((position, _)) if (validMoves.contains(loc) || validCaptures.contains(loc)) => movePiece(gameState, position, loc)
+        case Some((Some(position), _)) if (validMoves.contains(loc) || validCaptures.contains(loc)) => movePiece(gameState, position, loc)
         case Some((position, _)) if loc == position => gameState.selectedPiece.set(None) // deselect current piece
         case _ => {
           // covers case where player has a piece selected and selects a piece of the same color or no piece is selected
           // piece should be defined if selectedPiece is None as clickEvents filtered out cases where this doesn't hold.
           // no-op if no piece is defined
           piece.foreach { p =>
-            if (p.color == playerColor) gameState.selectedPiece.set(Some(loc, p))
+            if (p.color == playerColor) gameState.selectedPiece.set(Some((Some(loc), p)))
           }
         }
       }
@@ -110,5 +111,19 @@ object GameEvents {
     else {
       gameState.selectedPiece.set(None)
     }
+  }
+
+  def placePiece(
+    gameState: ClientGame,
+    piece: Piece,
+    location: Location
+  ): Unit = {
+    gameState.piecesVar.update { pieces =>
+      pieces + (location -> piece)
+    }
+
+    gameState.connection.socket.send(write(PlacePiece(gameState.player, piece, location)))
+    gameState.selectedPiece.set(None)
+    gameState.moveTurnBus.emit()
   }
 }

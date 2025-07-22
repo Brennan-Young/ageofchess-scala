@@ -18,7 +18,7 @@ class ClientGame(
 ) {
   val piecesVar: Var[Map[Location, Piece]] = Var(Map())
   val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
-  val selectedPiece: Var[Option[(Location, Piece)]] = Var(None)
+  val selectedPiece: Var[Option[(Option[Location], Piece)]] = Var(None)
   
   connection.socket.onmessage = event => {
     val message: GameMessage = read[GameMessage](event.data.toString)
@@ -44,14 +44,18 @@ class ClientGame(
   }
 
   val validMovesSignal = Signal.combine(boardVar.signal, piecesVar.signal, selectedPiece.signal).map {
-    case (Some(board), pieces, Some((location, piece))) => {
+    case (Some(board), pieces, Some((Some(location), piece))) => {
       validMoves(BoardWithPieces(board, pieces), location, piece)
+    }
+    case (Some(board), pieces, Some((None, piece))) => {
+      validPiecePlacements(BoardWithPieces(board, pieces), piece)
+      // Set.empty[Location]
     }
     case _ => Set.empty[Location]
   }
 
   val validCapturesSignal = Signal.combine(boardVar.signal, piecesVar.signal, selectedPiece.signal).map {
-    case (Some(board), pieces, Some((location, piece))) => {
+    case (Some(board), pieces, Some((Some(location), piece))) => {
       validCaptures(BoardWithPieces(board, pieces), location, piece)
     }
     case _ => Set.empty[Location]

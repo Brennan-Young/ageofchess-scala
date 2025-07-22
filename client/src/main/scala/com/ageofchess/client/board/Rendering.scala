@@ -68,7 +68,9 @@ class GameStateRenderer(val gameState: ClientGame) {
           img(
             src := s"/assets/pieces/${piece.asset}",
             cls := "tray-piece",
-            draggable := true
+            draggable := true,
+            onDragStart.map(e => (e, None, piece)) --> mouseDragStartBus.writer,
+            mouseDragStartEvents(mouseDragStartBus, gameState) --> mouseDragStartEffects(gameState)
           )
         }
       )
@@ -126,7 +128,7 @@ class GameStateRenderer(val gameState: ClientGame) {
             cls := "piece",
             // TODO: this doesn't work remotely as intended, need to read up on animations more
             // styleAttr := s"transform: translate(${location.y * 50}px, ${location.x}px);",
-            onDragStart.map(e => (e, location, p)) --> mouseDragStartBus.writer,
+            onDragStart.map(e => (e, Some(location), p)) --> mouseDragStartBus.writer,
             mouseDragStartEvents(mouseDragStartBus, gameState) --> mouseDragStartEffects(gameState)
           )
         }
