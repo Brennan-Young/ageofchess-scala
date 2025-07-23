@@ -7,6 +7,8 @@ import com.ageofchess.shared.board.BoardWithPieces
 import com.ageofchess.shared.board.SquareType
 
 package object piece {
+  val TreasureValue = 20
+
   sealed trait Color { def id: String }
 
   object Color {
@@ -14,19 +16,19 @@ package object piece {
       {
         case Black => "black"
         case White => "white"
-        case Gaia => "gaia"
+        // case Gaia => "gaia"
       },
       {
         case "black" => Black
         case "white" => White
-        case "gaia" => Gaia
+        // case "gaia" => Gaia
       }
     )
   }
 
   case object Black extends Color { override def id: String = "b" }
   case object White extends Color { override def id: String = "w" }
-  case object Gaia extends Color { override def id: String = "g" }
+  // case object Gaia extends Color { override def id: String = "g" }
 
   case class MoveVector(
     x: Int,
@@ -45,7 +47,15 @@ package object piece {
     MoveVector(0, -1, false)
   )
 
-  trait PieceType {
+  sealed trait PlaceableObject {
+    def id: String
+  }
+
+  object PlaceableObject {
+    // implicit val rw: ReadWriter[PlaceableObject] = readwriter[String].bimap[PlaceableObject]
+  }
+
+  sealed trait PieceType {
     def id: String
     def value: Int
 
@@ -62,7 +72,7 @@ package object piece {
         case Rook => "rook"
         case Queen => "queen"
         case King => "king"
-        case Treasure => "treasure"
+        // case Treasure => "treasure"
       },
       {
         case "pawn" => Pawn
@@ -71,17 +81,13 @@ package object piece {
         case "rook" => Rook
         case "queen" => Queen
         case "king" => King
-        case "treasure" => Treasure
+        // case "treasure" => Treasure
       }
     )
   }
 
-  case object Treasure extends PieceType {
+  case object Treasure extends PlaceableObject {
     override def id: String = "treasure"
-    override def value = 20
-
-    override def moves = Set()
-    override def captures = Set()
   }
 
   case object Pawn extends PieceType {
@@ -121,7 +127,7 @@ package object piece {
     override def captures = moves
   }
 
-  case object Bishop extends PieceType { 
+  case object Bishop extends PieceType {
     override def id: String = "bishop"
     override def value = 25
 
@@ -184,8 +190,9 @@ package object piece {
     override def captures = moves
   }
 
-  case class Piece(color: Color, pieceType: PieceType) {
-    def asset: String = s"${color.id}_${pieceType.id}.png"
+  case class Piece(color: Color, pieceType: PieceType) extends PlaceableObject {
+    override def id = s"${color.id}_${pieceType.id}"
+    def asset: String = s"${id}.png"
   }
 
   object Piece {

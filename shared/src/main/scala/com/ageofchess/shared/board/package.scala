@@ -117,10 +117,11 @@ package object board {
 
   case class BoardWithPieces(
     squares: Vector[Vector[SquareType]],
-    pieces: Map[Location, Piece]
+    pieces: Map[Location, Piece],
+    treasures: Set[Location]
   ) {
 
-    def getKing(color: Color): Option[Location] = pieces.find { case (loc, piece) =>
+    def getKing(color: Color): Option[Location] = pieces.find { case (loc, piece: Piece) =>
       piece.color == color && piece.pieceType == King  
     }
       .map(_._1)

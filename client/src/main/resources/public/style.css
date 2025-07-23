@@ -29,6 +29,12 @@
   z-index: 1;
 }
 
+.treasure {
+  width: 80%;
+  height: 80%;
+  z-index: 5;
+}
+
 .valid-move-marker {
   position: absolute;
   top: 50%;

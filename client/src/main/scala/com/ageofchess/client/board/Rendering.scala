@@ -35,6 +35,7 @@ class GameStateRenderer(val gameState: ClientGame) {
                 location,
                 renderableSquare,
                 piecesSignal.map(pieces => pieces.get(location)),
+                gameState.treasuresVar.signal.map(treasures => treasures.contains(location)),
                 validMovesOfSelectionSignal.map(validMoves => validMoves.contains(location))
               )
             }
@@ -48,8 +49,9 @@ class GameStateRenderer(val gameState: ClientGame) {
             val playerToMove = gameState.playerToMoveSignal.observe(ctx.owner)
             println(s"Received game message: $message")
             message match {
-              case UpdateBoardState(nextActivePlayer, pieces, gold) => {
+              case UpdateBoardState(nextActivePlayer, pieces, gold, treasures) => {
                 gameState.piecesVar.set(pieces)
+                gameState.treasuresVar.set(treasures)
                 if (nextActivePlayer == gameState.player && playerToMove.now() != gameState.player) {
                   gameState.moveTurnBus.emit()
                 }
@@ -109,6 +111,7 @@ class GameStateRenderer(val gameState: ClientGame) {
     location: Location,
     square: RenderableSquare,
     pieceSignal: Signal[Option[Piece]],
+    locationHasTreasureSignal: Signal[Boolean],
     isValidMoveOfCurrentSelectionSignal: Signal[Boolean]
   ): HtmlElement = {
 
@@ -146,6 +149,16 @@ class GameStateRenderer(val gameState: ClientGame) {
             onDragStart.map(e => (e, Some(location), p)) --> mouseDragStartBus.writer,
             mouseDragStartEvents(mouseDragStartBus, gameState) --> mouseDragStartEffects(gameState)
           )
+        }
+      },
+      child <-- locationHasTreasureSignal.map { hasTreasure =>
+        if (hasTreasure) {
+          img(
+            src := s"/assets/pieces/treasure.png",
+            cls := "treasure"
+          )
+        } else {
+          emptyNode
         }
       },
       child <-- isValidMoveOfCurrentSelectionSignal.map { isValidMove =>

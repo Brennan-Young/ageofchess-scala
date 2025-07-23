@@ -18,6 +18,7 @@ class ClientGame(
 ) {
   val piecesVar: Var[Map[Location, Piece]] = Var(Map())
   val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
+  val treasuresVar: Var[Set[Location]] = Var(Set())
   val selectedPiece: Var[Option[(Option[Location], Piece)]] = Var(None)
 
   val playerGoldVar: Var[Int] = Var(100)
@@ -27,10 +28,11 @@ class ClientGame(
     val message: GameMessage = read[GameMessage](event.data.toString)
     println(s"Received game message: $message")
     message match {
-      case InitializeBoard(board, pieces) => {
+      case InitializeBoard(board, pieces, treasures) => {
         println("Initializing board")
         boardVar.set(Some(board.squares))
         piecesVar.set(pieces)
+        treasuresVar.set(treasures)
       }
       case _ =>
     }
@@ -46,20 +48,22 @@ class ClientGame(
     if (p == player) true else false
   }
 
-  val validMovesSignal = Signal.combine(boardVar.signal, piecesVar.signal, selectedPiece.signal).map {
-    case (Some(board), pieces, Some((Some(location), piece))) => {
-      validMoves(BoardWithPieces(board, pieces), location, piece)
+  val boardStateSignal = Signal.combine(boardVar.signal, piecesVar.signal, treasuresVar.signal)
+
+  val validMovesSignal = Signal.combine(boardStateSignal, selectedPiece.signal).map {
+    case ((Some(board), pieces, treasures), Some((Some(location), piece))) => {
+      validMoves(BoardWithPieces(board, pieces, treasures), location, piece)
     }
-    case (Some(board), pieces, Some((None, piece))) => {
-      validPiecePlacements(BoardWithPieces(board, pieces), piece)
+    case ((Some(board), pieces, treasures), Some((None, piece))) => {
+      validPiecePlacements(BoardWithPieces(board, pieces, treasures), piece)
       // Set.empty[Location]
     }
     case _ => Set.empty[Location]
   }
 
-  val validCapturesSignal = Signal.combine(boardVar.signal, piecesVar.signal, selectedPiece.signal).map {
-    case (Some(board), pieces, Some((Some(location), piece))) => {
-      validCaptures(BoardWithPieces(board, pieces), location, piece)
+  val validCapturesSignal = Signal.combine(boardStateSignal, selectedPiece.signal).map {
+    case ((Some(board), pieces, treasures), Some((Some(location), piece))) => {
+      validCaptures(BoardWithPieces(board, pieces, treasures), location, piece)
     }
     case _ => Set.empty[Location]
   }

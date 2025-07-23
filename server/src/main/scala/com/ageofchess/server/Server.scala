@@ -89,7 +89,7 @@ object Server extends MainRoutes {
         }
       }
       case AwaitingBoard(playerId) => {
-        val serverMessage = InitializeBoard(game.board, game.pieces.toMap)
+        val serverMessage = InitializeBoard(game.board, game.pieces.toMap, game.treasures.toSet)
         playerChannels.get(playerId).foreach { connection =>
           connection.send(cask.Ws.Text(write(serverMessage)))
         }
@@ -99,23 +99,39 @@ object Server extends MainRoutes {
             game.pieces.get(from).foreach { piece =>
             game.pieces.remove(from)
             game.pieces.update(to, piece)
+            if (game.treasures.contains(to)) {
+              game.treasures.remove(to)
+              game.gold.get(player).foreach { prevGold =>
+                game.gold.update(player, prevGold + TreasureValue)
+              }
+            }
             game.changeActivePlayer
           }
         } else {
           // TODO no current op here, maybe a rejection message should be sent
         }
-        val serverMessage = UpdateBoardState(game.playerToMove, game.pieces.toMap, game.gold.toMap)
+        val serverMessage = UpdateBoardState(game.playerToMove, game.pieces.toMap, game.gold.toMap, game.treasures.toSet)
         broadcastToPlayers(game, write(serverMessage))
       }
       case PlacePiece(player, piece, location) => {
         if (player == game.playerToMove) {
           game.pieces.update(location, piece)
+
           game.gold.get(player).foreach { playerGold =>
-            game.gold.update(player, playerGold - piece.pieceType.value)  
+            val nextGold = if (game.treasures.contains(location)) {
+              playerGold - piece.pieceType.value + TreasureValue
+            } else {
+              playerGold - piece.pieceType.value
+            }
+
+            game.gold.update(player, nextGold)
           }
+
+          game.treasures.remove(location)
+
           game.changeActivePlayer
         } else {}
-        val serverMessage = UpdateBoardState(game.playerToMove, game.pieces.toMap, game.gold.toMap)
+        val serverMessage = UpdateBoardState(game.playerToMove, game.pieces.toMap, game.gold.toMap, game.treasures.toSet)
         broadcastToPlayers(game, write(serverMessage))
       }
     }
@@ -153,6 +169,7 @@ object Server extends MainRoutes {
     val board = defaultBoard3
     val pieces = mutable.Map(defaultPieces.toSeq: _*)
     val gold = mutable.Map(player1 -> 100, player2 -> 100)
+    val treasures = mutable.Set(Location(0, 1))
 
     val game = Game(
       pendingGame.gameId,
@@ -160,6 +177,7 @@ object Server extends MainRoutes {
       player2,
       board,
       pieces,
+      treasures,
       gold
     )
 

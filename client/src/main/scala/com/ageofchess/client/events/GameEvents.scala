@@ -75,17 +75,28 @@ object GameEvents {
 
   def mouseClickEffects(
     gameState: ClientGame
-  ) = Observer[(dom.MouseEvent, Location, Color, Boolean, Option[Piece], Set[Location], Set[Location])](onNext = { case (e, loc, playerColor, isPlayerTurn, piece, validMoves, validCaptures) =>
+  ) = Observer[(dom.MouseEvent, Location, Color, Boolean, Option[Piece], Set[Location], Set[Location])](onNext = { case (e, clickedLocation, playerColor, isPlayerTurn, piece, validMoves, validCaptures) =>
     if (isPlayerTurn) {
       gameState.selectedPiece.now() match {
-        case Some((Some(position), _)) if (validMoves.contains(loc) || validCaptures.contains(loc)) => movePiece(gameState, position, loc)
-        case Some((position, _)) if loc == position => gameState.selectedPiece.set(None) // deselect current piece
+        case Some((Some(currentPosition), _)) if (validMoves.contains(clickedLocation) || validCaptures.contains(clickedLocation)) => {
+          println(s"Moving piece from $currentPosition to $clickedLocation")
+          movePiece(gameState, currentPosition, clickedLocation)
+        }
+        case Some((Some(currentPosition), _)) if clickedLocation == currentPosition => {
+          println(s"Deselecting piece at $currentPosition")
+          gameState.selectedPiece.set(None) // deselect current piece
+        }
+        case Some((None, _)) => {
+          // not expected to be a reachable state as placing pieces is only supported with drag at the moment
+          println(s"No-op with click $clickedLocation")
+        }
         case _ => {
           // covers case where player has a piece selected and selects a piece of the same color or no piece is selected
           // piece should be defined if selectedPiece is None as clickEvents filtered out cases where this doesn't hold.
           // no-op if no piece is defined
           piece.foreach { p =>
-            if (p.color == playerColor) gameState.selectedPiece.set(Some((Some(loc), p)))
+            println(s"Selecting piece at $clickedLocation")
+            if (p.color == playerColor) gameState.selectedPiece.set(Some((Some(clickedLocation), p)))
           }
         }
       }
@@ -106,6 +117,12 @@ object GameEvents {
           pieces - originalPosition + (newPosition -> pieceToMove)
         }.getOrElse(pieces)
       }
+
+      if (gameState.treasuresVar.now().contains(newPosition)) {
+        gameState.playerGoldVar.update(gold => gold + TreasureValue)
+        gameState.treasuresVar.update(treasures => treasures - newPosition)
+      }
+
       gameState.connection.socket.send(write(MovePiece(gameState.player, originalPosition, newPosition)))
       gameState.selectedPiece.set(None)
       gameState.moveTurnBus.emit()
@@ -123,7 +140,13 @@ object GameEvents {
     gameState.piecesVar.update { pieces =>
       pieces + (location -> piece)
     }
-    gameState.playerGoldVar.update(gold => gold - piece.pieceType.value)
+
+    if (gameState.treasuresVar.now().contains(location)) {
+      gameState.playerGoldVar.update(gold => gold - piece.pieceType.value + TreasureValue)
+      gameState.treasuresVar.update(treasures => treasures - location)
+    } else {
+      gameState.playerGoldVar.update(gold => gold - piece.pieceType.value)
+    }
 
     gameState.connection.socket.send(write(PlacePiece(gameState.player, piece, location)))
     gameState.selectedPiece.set(None)

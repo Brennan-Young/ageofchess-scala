@@ -14,7 +14,7 @@ object Messages {
     implicit val rw: ReadWriter[GameMessage] = macroRW
   }
 
-  case class InitializeBoard(board: Board, pieces: Map[Location, Piece]) extends GameMessage
+  case class InitializeBoard(board: Board, pieces: Map[Location, Piece], treasures: Set[Location]) extends GameMessage
   object InitializeBoard {
     implicit val rw: ReadWriter[InitializeBoard] = macroRW
   }
@@ -29,7 +29,7 @@ object Messages {
     implicit val rw: ReadWriter[UpdatePieces] = macroRW
   }
 
-  case class UpdateBoardState(nextActivePlayer: Player, pieces: Map[Location, Piece], gold: Map[Player, Int]) extends GameMessage
+  case class UpdateBoardState(nextActivePlayer: Player, pieces: Map[Location, Piece], gold: Map[Player, Int], treasures: Set[Location]) extends GameMessage
   object UpdateBoardState {
     implicit val rw: ReadWriter[UpdateBoardState] = macroRW
   }
