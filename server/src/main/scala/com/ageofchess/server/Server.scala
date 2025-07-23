@@ -96,7 +96,7 @@ object Server extends MainRoutes {
       }
       case MovePiece(player, from, to) => {
         if (player == game.playerToMove) {
-            game.pieces.get(from).foreach { piece =>
+          game.pieces.get(from).foreach { piece =>
             game.pieces.remove(from)
             game.pieces.update(to, piece)
             if (game.treasures.contains(to)) {
