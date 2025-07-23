@@ -104,15 +104,18 @@ object Server extends MainRoutes {
         } else {
           // TODO no current op here, maybe a rejection message should be sent
         }
-        val serverMessage = UpdatePieces(game.playerToMove, game.pieces.toMap)
+        val serverMessage = UpdateBoardState(game.playerToMove, game.pieces.toMap, game.gold.toMap)
         broadcastToPlayers(game, write(serverMessage))
       }
       case PlacePiece(player, piece, location) => {
         if (player == game.playerToMove) {
           game.pieces.update(location, piece)
+          game.gold.get(player).foreach { playerGold =>
+            game.gold.update(player, playerGold - piece.pieceType.value)  
+          }
           game.changeActivePlayer
         } else {}
-        val serverMessage = UpdatePieces(game.playerToMove, game.pieces.toMap)
+        val serverMessage = UpdateBoardState(game.playerToMove, game.pieces.toMap, game.gold.toMap)
         broadcastToPlayers(game, write(serverMessage))
       }
     }
@@ -149,13 +152,15 @@ object Server extends MainRoutes {
     val player2 = Player(p2, Black)
     val board = defaultBoard3
     val pieces = mutable.Map(defaultPieces.toSeq: _*)
+    val gold = mutable.Map(player1 -> 100, player2 -> 100)
 
     val game = Game(
       pendingGame.gameId,
       player1,
       player2,
       board,
-      pieces
+      pieces,
+      gold
     )
 
     games.update(pendingGame.gameId, game)

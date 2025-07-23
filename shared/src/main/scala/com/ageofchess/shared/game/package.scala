@@ -18,6 +18,7 @@ package object game {
     black: Player,
     board: Board,
     pieces: mutable.Map[Location, Piece],
+    gold: mutable.Map[Player, Int]
   ) {
     // TODO: better way to represent this than a var?  Should a "Game" be a sequence of game states rather than a mutable class like this?
     var playerToMove: Player = white

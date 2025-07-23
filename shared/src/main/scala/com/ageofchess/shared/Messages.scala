@@ -29,6 +29,11 @@ object Messages {
     implicit val rw: ReadWriter[UpdatePieces] = macroRW
   }
 
+  case class UpdateBoardState(nextActivePlayer: Player, pieces: Map[Location, Piece], gold: Map[Player, Int]) extends GameMessage
+  object UpdateBoardState {
+    implicit val rw: ReadWriter[UpdateBoardState] = macroRW
+  }
+
   sealed trait ClientMessage
   object ClientMessage {
     implicit val rw: ReadWriter[ClientMessage] = macroRW

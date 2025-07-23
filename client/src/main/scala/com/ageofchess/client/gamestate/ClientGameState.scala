@@ -19,6 +19,9 @@ class ClientGame(
   val piecesVar: Var[Map[Location, Piece]] = Var(Map())
   val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
   val selectedPiece: Var[Option[(Option[Location], Piece)]] = Var(None)
+
+  val playerGoldVar: Var[Int] = Var(100)
+  val opponentGoldVar: Var[Int] = Var(100)
   
   connection.socket.onmessage = event => {
     val message: GameMessage = read[GameMessage](event.data.toString)
@@ -60,6 +63,8 @@ class ClientGame(
     }
     case _ => Set.empty[Location]
   }
+
+  val playerGoldSignal = playerGoldVar.signal
 }
 
 class PendingClientGame(

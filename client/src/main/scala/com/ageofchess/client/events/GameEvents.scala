@@ -36,18 +36,20 @@ object GameEvents {
     dropBus: EventBus[Location],
     isValidMoveOfCurrentSelectionSignal: Signal[Boolean],
     selectedPieceSignal: Signal[Option[(Option[Location], Piece)]],
+    playerGoldSignal: Signal[Int],
     location: Location
   ) = {
     dropBus
       .events
-      .withCurrentValueOf(isValidMoveOfCurrentSelectionSignal, selectedPieceSignal)
-      .filter { case (toLoc, isValid, selectedPiece) => toLoc == location }
+      .withCurrentValueOf(isValidMoveOfCurrentSelectionSignal, selectedPieceSignal, playerGoldSignal)
+      .filter { case (toLoc, isValid, selectedPiece, playerGold) => toLoc == location }
   }
 
-  def mouseDragDropEffects(gameState: ClientGame) = Observer[(Location, Boolean, Option[(Option[Location], Piece)])](onNext = { case (toLoc, isValidMove, selectedPiece) =>
+  def mouseDragDropEffects(gameState: ClientGame) = Observer[(Location, Boolean, Option[(Option[Location], Piece)], Int)](onNext = { case (toLoc, isValidMove, selectedPiece, playerGold) =>
     selectedPiece match {
       case Some((Some(fromLoc), piece)) if isValidMove => movePiece(gameState, fromLoc, toLoc)
-      case Some((None, piece)) if isValidMove => placePiece(gameState, piece, toLoc)
+      case Some((None, piece)) if isValidMove && playerGold >= piece.pieceType.value => placePiece(gameState, piece, toLoc)
+      case Some((None, piece)) if isValidMove => // TODO: display insufficient gold message
       case _ =>
     }
   })
@@ -116,11 +118,12 @@ object GameEvents {
   def placePiece(
     gameState: ClientGame,
     piece: Piece,
-    location: Location
+    location: Location,
   ): Unit = {
     gameState.piecesVar.update { pieces =>
       pieces + (location -> piece)
     }
+    gameState.playerGoldVar.update(gold => gold - piece.pieceType.value)
 
     gameState.connection.socket.send(write(PlacePiece(gameState.player, piece, location)))
     gameState.selectedPiece.set(None)

@@ -48,10 +48,16 @@ class GameStateRenderer(val gameState: ClientGame) {
             val playerToMove = gameState.playerToMoveSignal.observe(ctx.owner)
             println(s"Received game message: $message")
             message match {
-              case UpdatePieces(nextActivePlayer, pieces) => {
+              case UpdateBoardState(nextActivePlayer, pieces, gold) => {
                 gameState.piecesVar.set(pieces)
                 if (nextActivePlayer == gameState.player && playerToMove.now() != gameState.player) {
                   gameState.moveTurnBus.emit()
+                }
+                gold.get(gameState.player).foreach { updatedGold =>
+                  gameState.playerGoldVar.set(updatedGold)
+                }
+                gold.get(gameState.opponent).foreach { updatedGold =>
+                  gameState.opponentGoldVar.set(updatedGold)
                 }
               }
               case _ =>
@@ -73,6 +79,14 @@ class GameStateRenderer(val gameState: ClientGame) {
             mouseDragStartEvents(mouseDragStartBus, gameState) --> mouseDragStartEffects(gameState)
           )
         }
+      ),
+      div(
+        cls := "player-gold",
+        child.text <-- gameState.playerGoldSignal.map(gold => s"Your Gold: ${gold}")
+      ),
+      div(
+        cls := "opponent-gold",
+        child.text <-- gameState.opponentGoldVar.signal.map(gold => s"Opponent's Gold: ${gold}")
       )
     )
   }
@@ -119,6 +133,7 @@ class GameStateRenderer(val gameState: ClientGame) {
         mouseDragDropBus,
         isValidMoveOrCapture,
         gameState.selectedPiece.signal,
+        gameState.playerGoldSignal,
         location
       ) --> mouseDragDropEffects(gameState),
       child.maybe <-- pieceSignal.map { piece =>
@@ -142,8 +157,8 @@ class GameStateRenderer(val gameState: ClientGame) {
           emptyNode
         }
       },
-      child <-- isValidCaptureOfCurrentSelectionSignal.map { isValid => 
-        if (isValid) {
+      child <-- isValidCaptureOfCurrentSelectionSignal.map { isValidCapture => 
+        if (isValidCapture) {
           div(
             cls := "valid-capture-marker"
           )

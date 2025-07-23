@@ -47,6 +47,7 @@ package object piece {
 
   trait PieceType {
     def id: String
+    def value: Int
 
     def moves: Set[MoveVector]
     def captures: Set[MoveVector]
@@ -77,6 +78,7 @@ package object piece {
 
   case object Treasure extends PieceType {
     override def id: String = "treasure"
+    override def value = 20
 
     override def moves = Set()
     override def captures = Set()
@@ -84,6 +86,7 @@ package object piece {
 
   case object Pawn extends PieceType {
     override def id: String = "pawn"
+    override def value = 20
 
     override def moves = Set(
       MoveVector(1, 0, false),
@@ -102,6 +105,7 @@ package object piece {
 
   case object Knight extends PieceType {
     override def id: String = "knight"
+    override def value = 30
 
     override def moves = Set(
       MoveVector(2, 1, false),
@@ -117,7 +121,10 @@ package object piece {
     override def captures = moves
   }
 
-  case object Bishop extends PieceType { override def id: String = "bishop"
+  case object Bishop extends PieceType { 
+    override def id: String = "bishop"
+    override def value = 25
+
     override def moves = Set(
       MoveVector(1, 1, true),
       MoveVector(1, -1, true),
@@ -130,6 +137,7 @@ package object piece {
 
   case object Rook extends PieceType {
     override def id: String = "rook"
+    override def value = 35
 
     override def moves = Set(
       MoveVector(1, 0, true),
@@ -143,6 +151,7 @@ package object piece {
 
   case object Queen extends PieceType {
     override def id: String = "queen"
+    override def value = 75
 
     override def moves = Set(
       MoveVector(1, 1, true),
@@ -159,6 +168,7 @@ package object piece {
   }
   case object King extends PieceType {
     override def id: String = "king"
+    override def value = 0
 
     override def moves = Set(
       MoveVector(1, 1, false),
@@ -211,36 +221,31 @@ package object piece {
       case Pawn => {
         board.pieces.flatMap { case (loc, piece) =>
           if (piece.color == pieceToPlace.color) {
-            directions.map { dir =>
-              val square = loc.translate(dir)
-              board.getSquare(square).map(square -> _)
-            }
-              .flatten
-              .filter { case (location, square) =>
-                square.canMoveOnto && !board.pieces.contains(location)
-              }
-              .map(_._1)
+            validSquaresAround(loc, board)
           } else Set.empty[Location]
         }
           .toSet
       }
       case _ => {
         board.getKing(pieceToPlace.color) match { 
-          case Some(loc) =>
-            directions.map { dir =>
-              val square = loc.translate(dir)
-              board.getSquare(square).map(square -> _)  
-            } 
-              .flatten
-              .filter { case (location, square) =>
-                square.canMoveOnto && !board.pieces.contains(location)  
-              }
-              .map(_._1)
+          case Some(loc) => validSquaresAround(loc, board)
           case None => Set.empty[Location]
         }
       }
         .toSet
     }
+  }
+
+  def validSquaresAround(loc: Location, board: BoardWithPieces): Set[Location] = {
+    directions.map { dir =>
+      val square = loc.translate(dir)
+      board.getSquare(square).map(square -> _)
+    }
+      .flatten
+      .filter { case (location, square) =>
+        square.canMoveOnto && !board.pieces.contains(location)  
+      }
+      .map(_._1)
   }
 
   def validMoves(
