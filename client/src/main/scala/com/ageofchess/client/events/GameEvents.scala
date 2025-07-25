@@ -5,7 +5,9 @@ import com.raquo.laminar.api.L._
 import org.scalajs.dom
 import com.ageofchess.shared.piece._
 import com.ageofchess.shared.Messages._
+import com.ageofchess.shared.game._
 import upickle.default._
+import com.ageofchess.client.api.Sockets.GameSocket
 
 object GameEvents {
   
@@ -151,5 +153,43 @@ object GameEvents {
     gameState.connection.socket.send(write(PlacePiece(gameState.player, piece, location)))
     gameState.selectedPiece.set(None)
     gameState.moveTurnBus.emit()
+  }
+
+  // def getNextGameState(
+  //   clientGameState: ClientGame,
+  //   playerAction: PlayerAction
+  // ): GameState = {
+
+  //   val playerGold = clientGameState.playerGoldVar.now()
+  //   val oppGold = clientGameState.opponentGoldVar.now()
+
+  //   val gameStateRepr = GameState(
+  //     clientGameState.gameId,
+  //     clientGameState.player,
+  //     clientGameState.opponent,
+  //     clientGameState.boardVar.now(),
+  //     clientGameState.piecesVar.now(),
+  //     Map(clientGameState.player -> playerGold, clientGameState.opponent -> oppGold),
+  //     clientGameState.treasuresVar.now(),
+  //     clientGameState.play
+  //   )
+  // }
+
+  def updateGameStateVariables(
+    clientGameState: ClientGame,
+    nextGameState: GameState
+  ): Unit = {
+    clientGameState.piecesVar.update(pieces => nextGameState.pieces)
+    clientGameState.playerGoldVar.update(gold => nextGameState.gold.get(clientGameState.player).getOrElse(0)) // TODO: Difficulty arises from player gold sometimes being stored as a Map versus sometimes two named variables.  May want to make this consistent
+    clientGameState.treasuresVar.update(treasures => nextGameState.treasures)
+    clientGameState.selectedPiece.set(None)
+    clientGameState.moveTurnBus.emit()
+  }
+
+  def sendGameStateToServer(
+    socket: GameSocket,
+    message: ClientMessage
+  ): Unit = {
+    socket.socket.send(write(message))
   }
 }
