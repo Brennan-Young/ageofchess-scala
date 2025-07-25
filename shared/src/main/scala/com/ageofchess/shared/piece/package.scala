@@ -227,7 +227,7 @@ package object piece {
     pieceToPlace.pieceType match {
       case Pawn => {
         board.pieces.flatMap { case (loc, piece) =>
-          if (piece.color == pieceToPlace.color) {
+          if (piece.color == pieceToPlace.color && piece.pieceType != Pawn) {
             validSquaresAround(loc, board)
           } else Set.empty[Location]
         }
