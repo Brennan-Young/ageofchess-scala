@@ -21,7 +21,7 @@ case class GameState(
   def computeNextState(
     playerAction: PlayerAction
   ): Option[GameState] = {
-    
+
     val updatedPieces = playerAction match {
       case PieceMove(from, to) => {
         pieces.get(from).map { piece => 

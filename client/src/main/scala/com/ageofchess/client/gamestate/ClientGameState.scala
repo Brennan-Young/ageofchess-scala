@@ -56,7 +56,6 @@ class ClientGame(
     }
     case ((Some(board), pieces, treasures), Some((None, piece))) => {
       validPiecePlacements(BoardWithPieces(board, pieces, treasures), piece)
-      // Set.empty[Location]
     }
     case _ => Set.empty[Location]
   }
@@ -65,6 +64,7 @@ class ClientGame(
     case ((Some(board), pieces, treasures), Some((Some(location), piece))) => {
       validCaptures(BoardWithPieces(board, pieces, treasures), location, piece)
     }
+    // can a piece be placed onto another piece, thus capturing it?
     case _ => Set.empty[Location]
   }
 

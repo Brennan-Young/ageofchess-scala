@@ -42,7 +42,7 @@ class GameStateRenderer(val gameState: ClientGame) {
           )
         },
         onClick.map { event => findSquare(event.target).map(event -> _) } --> mouseClickBus.writer,
-        mouseClickEv(mouseClickBus, gameState) --> mouseClickEff(gameState),
+        mouseClickEvents(mouseClickBus, gameState) --> mouseClickEffects(gameState),
         onMountCallback { ctx =>
           gameState.connection.socket.onmessage = event => {
             val message: GameMessage = read[GameMessage](event.data.toString)
@@ -134,11 +134,17 @@ class GameStateRenderer(val gameState: ClientGame) {
       onDrop.preventDefault.mapTo(location) --> mouseDragDropBus.writer,
       mouseDragDropEvents(
         mouseDragDropBus,
+        gameState,
         isValidMoveOrCapture,
-        gameState.selectedPiece.signal,
-        gameState.playerGoldSignal,
         location
       ) --> mouseDragDropEffects(gameState),
+      // mouseDragDropEvents(
+      //   mouseDragDropBus,
+      //   isValidMoveOrCapture,
+      //   gameState.selectedPiece.signal,
+      //   gameState.playerGoldSignal,
+      //   location
+      // ) --> mouseDragDropEffects(gameState),
       child.maybe <-- pieceSignal.map { piece =>
         piece.map { p => 
           img(
