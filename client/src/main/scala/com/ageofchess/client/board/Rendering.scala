@@ -42,7 +42,7 @@ class GameStateRenderer(val gameState: ClientGame) {
           )
         },
         onClick.map { event => findSquare(event.target).map(event -> _) } --> mouseClickBus.writer,
-        mouseClickEvents(mouseClickBus, gameState) --> mouseClickEffects(gameState),
+        mouseClickEv(mouseClickBus, gameState) --> mouseClickEff(gameState),
         onMountCallback { ctx =>
           gameState.connection.socket.onmessage = event => {
             val message: GameMessage = read[GameMessage](event.data.toString)

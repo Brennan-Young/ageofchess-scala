@@ -75,6 +75,63 @@ object GameEvents {
       }
   }
 
+  def mouseClickEv(
+    clickBus: EventBus[Option[(dom.MouseEvent, Location)]],
+    clientGame: ClientGame
+  ): EventStream[(dom.MouseEvent, Location, GameState, Boolean, Option[Piece], Set[Location], Set[Location], Option[(Option[Location], Piece)])] = {
+
+    clickBus
+      .events
+      .withCurrentValueOf(clientGame.gameStateSignal, clientGame.isPlayerTurnSignal, clientGame.validMovesSignal, clientGame.validCapturesSignal, clientGame.selectedPiece.signal)
+      .collect {
+        case (Some((event, location)), gameState, isPlayerTurn, validMoves, validCaptures, selectedPiece) if (
+          (gameState.pieces.contains(location) && !selectedPiece.isDefined) ||
+          (selectedPiece.isDefined)
+        ) =>
+          (event, location, gameState, isPlayerTurn, gameState.pieces.get(location), validMoves, validCaptures, selectedPiece)
+      }
+  }
+
+  def mouseClickEff(
+    clientGame: ClientGame
+  ) = Observer[(dom.MouseEvent, Location, GameState, Boolean, Option[Piece], Set[Location], Set[Location], Option[(Option[Location], Piece)])](onNext = {
+    case (e, clickedLocation, gameState, isPlayerTurn, piece, validMoves, validCaptures, selectedPiece) =>
+      if (isPlayerTurn) {
+        selectedPiece match {
+          case Some((Some(currentPosition), _)) if (validMoves.contains(clickedLocation) || validCaptures.contains(clickedLocation)) => {
+            println(s"Moving piece from $currentPosition to $clickedLocation")
+            // movePiece(gameState, currentPosition, clickedLocation)
+            val action = PieceMove(currentPosition, clickedLocation)
+            val nextState = gameState.computeNextState(action)
+
+            println(s"State update: ${gameState}, ${nextState}")
+
+            nextState.foreach { state =>
+              updateGameStateVariables(clientGame, state)
+              sendGameStateToServer(clientGame.connection, MovePiece(clientGame.player, currentPosition, clickedLocation))
+            }
+          }
+          case Some((Some(currentPosition), _)) if clickedLocation == currentPosition => {
+            println(s"Deselecting piece at $currentPosition")
+            clientGame.selectedPiece.set(None) // deselect current piece
+          }
+          case Some((None, _)) => {
+            // not expected to be a reachable state as placing pieces is only supported with drag at the moment
+            println(s"No-op with click $clickedLocation")
+          }
+          case _ => {
+            // covers case where player has a piece selected and selects a piece of the same color or no piece is selected
+            // piece should be defined if selectedPiece is None as clickEvents filtered out cases where this doesn't hold.
+            // no-op if no piece is defined
+            piece.foreach { p =>
+              println(s"Selecting piece at $clickedLocation")
+              if (p.color == clientGame.player.color) clientGame.selectedPiece.set(Some((Some(clickedLocation), p)))
+            }
+          }
+        }
+      }
+  })
+
   def mouseClickEffects(
     gameState: ClientGame
   ) = Observer[(dom.MouseEvent, Location, Color, Boolean, Option[Piece], Set[Location], Set[Location])](onNext = { case (e, clickedLocation, playerColor, isPlayerTurn, piece, validMoves, validCaptures) =>

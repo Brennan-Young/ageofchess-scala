@@ -69,6 +69,28 @@ class ClientGame(
   }
 
   val playerGoldSignal = playerGoldVar.signal
+
+  val gameStateSignal = Signal.combine(boardStateSignal, playerGoldVar.signal, opponentGoldVar.signal, playerToMoveSignal).map {
+    case ((board, pieces, treasures), playerGold, opponentGold, playerToMove) =>
+      val white = if (player.color == White) player else opponent
+      val black = if (player.color == Black) player else opponent
+
+      val whiteGold = if (player.color == White) playerGold else opponentGold
+      val blackGold = if (player.color == Black) playerGold else opponentGold
+
+      val gold = Map(white -> whiteGold, black -> blackGold)
+
+      GameState(
+        gameId,
+        white,
+        black,
+        Board(board.getOrElse(Vector())),
+        pieces,
+        gold,
+        treasures,
+        playerToMove
+      )
+  }
 }
 
 class PendingClientGame(
