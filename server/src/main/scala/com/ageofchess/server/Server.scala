@@ -48,7 +48,7 @@ object Server extends MainRoutes {
     )
   }
 
-  val games = collection.mutable.Map.empty[String, Game]
+  val games = collection.mutable.Map.empty[String, GameState]
   val pendingGames = collection.mutable.Map.empty[String, PendingGame]
   val playerChannels = collection.mutable.Map.empty[String, cask.WsChannelActor]
 
@@ -67,13 +67,13 @@ object Server extends MainRoutes {
 
       cask.WsActor {
         case cask.Ws.Text(msg) => {
-          games.get(gameId).foreach(game => handleMessage(game, msg))
+          games.get(gameId).foreach(game => handleMessage(gameId, game, msg))
         }
       }
     }
   }
 
-  def handleMessage(game: Game, message: String): Unit = {
+  def handleMessage(gameId: String, game: GameState, message: String): Unit = {
     println(message)
     val parsedMessage = read[ClientMessage](message)
     parsedMessage match {
@@ -95,6 +95,11 @@ object Server extends MainRoutes {
         }
       }
       case MovePiece(player, from, to) => {
+        val action = PieceMove(from, to)
+        val nextGameState = game.computeNextState(action)
+
+        games.
+
         if (player == game.playerToMove) {
           game.pieces.get(from).foreach { piece =>
             game.pieces.remove(from)
@@ -171,6 +176,17 @@ object Server extends MainRoutes {
     val gold = mutable.Map(player1 -> 100, player2 -> 100)
     val treasures = mutable.Set(Location(0, 1))
 
+    val gameState = GameState(
+      pendingGame.gameId,
+      player1,
+      player2,
+      board,
+      pieces.toMap,
+      gold.toMap,
+      treasures.toSet,
+      player1
+    )
+
     val game = Game(
       pendingGame.gameId,
       player1,
@@ -181,7 +197,7 @@ object Server extends MainRoutes {
       gold
     )
 
-    games.update(pendingGame.gameId, game)
+    games.update(pendingGame.gameId, gameState)
     playerChannels.update(playerId, channel)
     pendingGames.remove(pendingGame.gameId)
   }
