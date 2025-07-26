@@ -11,16 +11,14 @@ import scala.util.Try
 import upickle.default._ // remove later
 import com.ageofchess.client.events.GameEvents._
 
-class GameStateRenderer(val gameState: ClientGame) {
+class GameStateRenderer(val clientGame: ClientGame) {
   def render(
-    board: Vector[Vector[SquareType]],
-    piecesSignal: Signal[Map[Location, Piece]],
-    validMovesOfSelectionSignal: Signal[Set[Location]]
+    board: Vector[Vector[SquareType]]
   ): HtmlElement = {
     val numColumns = board.headOption.map(_.size).getOrElse(0)
 
     div(
-      h1(s"You are playing as ${gameState.player.color.toString}"),
+      h1(s"You are playing as ${clientGame.player.color.toString}"),
       div(
         cls := "board",
         styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
@@ -34,32 +32,32 @@ class GameStateRenderer(val gameState: ClientGame) {
               renderSquare(
                 location,
                 renderableSquare,
-                piecesSignal.map(pieces => pieces.get(location)),
-                gameState.treasuresVar.signal.map(treasures => treasures.contains(location)),
-                validMovesOfSelectionSignal.map(validMoves => validMoves.contains(location))
+                clientGame.piecesVar.signal.map(pieces => pieces.get(location)),
+                clientGame.treasuresVar.signal.map(treasures => treasures.contains(location)),
+                clientGame.validMovesSignal.map(validMoves => validMoves.contains(location))
               )
             }
           )
         },
         onClick.map { event => findSquare(event.target).map(event -> _) } --> mouseClickBus.writer,
-        mouseClickEvents(mouseClickBus, gameState) --> mouseClickEffects(gameState),
+        mouseClickEvents(mouseClickBus, clientGame) --> mouseClickEffects(clientGame),
         onMountCallback { ctx =>
-          gameState.connection.socket.onmessage = event => {
+          clientGame.connection.socket.onmessage = event => {
             val message: GameMessage = read[GameMessage](event.data.toString)
-            val playerToMove = gameState.playerToMoveSignal.observe(ctx.owner)
+            val playerToMove = clientGame.playerToMoveSignal.observe(ctx.owner)
             println(s"Received game message: $message")
             message match {
               case UpdateBoardState(nextActivePlayer, pieces, gold, treasures) => {
-                gameState.piecesVar.set(pieces)
-                gameState.treasuresVar.set(treasures)
-                if (nextActivePlayer == gameState.player && playerToMove.now() != gameState.player) {
-                  gameState.moveTurnBus.emit()
+                clientGame.piecesVar.set(pieces)
+                clientGame.treasuresVar.set(treasures)
+                if (nextActivePlayer == clientGame.player && playerToMove.now() != clientGame.player) {
+                  clientGame.moveTurnBus.emit()
                 }
-                gold.get(gameState.player).foreach { updatedGold =>
-                  gameState.playerGoldVar.set(updatedGold)
+                gold.get(clientGame.player).foreach { updatedGold =>
+                  clientGame.playerGoldVar.set(updatedGold)
                 }
-                gold.get(gameState.opponent).foreach { updatedGold =>
-                  gameState.opponentGoldVar.set(updatedGold)
+                gold.get(clientGame.opponent).foreach { updatedGold =>
+                  clientGame.opponentGoldVar.set(updatedGold)
                 }
               }
               case _ =>
@@ -69,7 +67,7 @@ class GameStateRenderer(val gameState: ClientGame) {
       ),
       div(
         cls := "piece-tray",
-        (gameState.player.color match {
+        (clientGame.player.color match {
           case White => whiteBuyablePieces
           case Black => blackBuyablePieces
         }).map { piece =>
@@ -78,17 +76,17 @@ class GameStateRenderer(val gameState: ClientGame) {
             cls := "tray-piece",
             draggable := true,
             onDragStart.map(e => (e, None, piece)) --> mouseDragStartBus.writer,
-            mouseDragStartEvents(mouseDragStartBus, gameState) --> mouseDragStartEffects(gameState)
+            mouseDragStartEvents(mouseDragStartBus, clientGame) --> mouseDragStartEffects(clientGame)
           )
         }
       ),
       div(
         cls := "player-gold",
-        child.text <-- gameState.playerGoldSignal.map(gold => s"Your Gold: ${gold}")
+        child.text <-- clientGame.playerGoldSignal.map(gold => s"Your Gold: ${gold}")
       ),
       div(
         cls := "opponent-gold",
-        child.text <-- gameState.opponentGoldVar.signal.map(gold => s"Opponent's Gold: ${gold}")
+        child.text <-- clientGame.opponentGoldVar.signal.map(gold => s"Opponent's Gold: ${gold}")
       )
     )
   }
@@ -115,7 +113,7 @@ class GameStateRenderer(val gameState: ClientGame) {
     isValidMoveOfCurrentSelectionSignal: Signal[Boolean]
   ): HtmlElement = {
 
-    val isValidCaptureOfCurrentSelectionSignal: Signal[Boolean] = gameState.validCapturesSignal.map { captures =>
+    val isValidCaptureOfCurrentSelectionSignal: Signal[Boolean] = clientGame.validCapturesSignal.map { captures =>
       captures.contains(location)  
     }
 
@@ -134,17 +132,10 @@ class GameStateRenderer(val gameState: ClientGame) {
       onDrop.preventDefault.mapTo(location) --> mouseDragDropBus.writer,
       mouseDragDropEvents(
         mouseDragDropBus,
-        gameState,
+        clientGame,
         isValidMoveOrCapture,
         location
-      ) --> mouseDragDropEffects(gameState),
-      // mouseDragDropEvents(
-      //   mouseDragDropBus,
-      //   isValidMoveOrCapture,
-      //   gameState.selectedPiece.signal,
-      //   gameState.playerGoldSignal,
-      //   location
-      // ) --> mouseDragDropEffects(gameState),
+      ) --> mouseDragDropEffects(clientGame),
       child.maybe <-- pieceSignal.map { piece =>
         piece.map { p => 
           img(
@@ -153,7 +144,7 @@ class GameStateRenderer(val gameState: ClientGame) {
             // TODO: this doesn't work remotely as intended, need to read up on animations more
             // styleAttr := s"transform: translate(${location.y * 50}px, ${location.x}px);",
             onDragStart.map(e => (e, Some(location), p)) --> mouseDragStartBus.writer,
-            mouseDragStartEvents(mouseDragStartBus, gameState) --> mouseDragStartEffects(gameState)
+            mouseDragStartEvents(mouseDragStartBus, clientGame) --> mouseDragStartEffects(clientGame)
           )
         }
       },

@@ -34,28 +34,6 @@ object GameEvents {
     }
   )
 
-  // def mouseDragDropEvents(
-  //   dropBus: EventBus[Location],
-  //   isValidMoveOfCurrentSelectionSignal: Signal[Boolean],
-  //   selectedPieceSignal: Signal[Option[(Option[Location], Piece)]],
-  //   playerGoldSignal: Signal[Int],
-  //   location: Location
-  // ) = {
-  //   dropBus
-  //     .events
-  //     .withCurrentValueOf(isValidMoveOfCurrentSelectionSignal, selectedPieceSignal, playerGoldSignal)
-  //     .filter { case (toLoc, isValid, selectedPiece, playerGold) => toLoc == location }
-  // }
-
-  // def mouseDragDropEffects(gameState: ClientGame) = Observer[(Location, Boolean, Option[(Option[Location], Piece)], Int)](onNext = { case (toLoc, isValidMove, selectedPiece, playerGold) =>
-  //   selectedPiece match {
-  //     case Some((Some(fromLoc), piece)) if isValidMove => movePiece(gameState, fromLoc, toLoc)
-  //     case Some((None, piece)) if isValidMove && playerGold >= piece.pieceType.value => placePiece(gameState, piece, toLoc)
-  //     case Some((None, piece)) if isValidMove => // TODO: display insufficient gold message
-  //     case _ =>
-  //   }
-  // })
-
   def mouseDragDropEvents(
     dropBus: EventBus[Location],
     clientGame: ClientGame,
@@ -75,9 +53,19 @@ object GameEvents {
       case (draggedToLocation, gameState, selectedPiece, playerGold, isValidMove) =>
         val playerAction: Option[PlayerAction] = selectedPiece match {
           case Some((Some(draggedFromLocation), piece)) if isValidMove => Some(PieceMove(draggedFromLocation, draggedToLocation))
-          case Some((None, piece)) if isValidMove && playerGold >= piece.pieceType.value => Some(PiecePlacement(piece, draggedToLocation))
-          case Some((None, piece)) if isValidMove => None // TODO: display insufficient gold message
-          case _ => None // display invalid move message?
+          case Some((None, piece)) if isValidMove && playerGold >= piece.pieceType.value => {
+            println("placing piece")
+            Some(PiecePlacement(piece, draggedToLocation))
+          }
+          case Some((None, piece)) => {
+            clientGame.selectedPiece.set(None)
+            // TODO: differentiate between invalid piece placement and insufficient gold
+            None // TODO: display insufficient gold message
+          }
+          case _ => {
+            println(selectedPiece, isValidMove)
+            None // display invalid move message?
+          }
         }
 
         for {
@@ -94,25 +82,6 @@ object GameEvents {
         }
     })
   }
-
-  // def mouseClickEvents(
-  //   clickBus: EventBus[Option[(dom.MouseEvent, Location)]],
-  //   gameState: ClientGame
-  // ): EventStream[(dom.MouseEvent, Location, Color, Boolean, Option[Piece], Set[Location], Set[Location])] = {
-
-  //   clickBus
-  //     .events
-  //     .withCurrentValueOf(gameState.isPlayerTurnSignal, gameState.piecesVar.signal, gameState.validMovesSignal, gameState.validCapturesSignal)
-  //     .collect {
-  //       // if the square we've selected has a piece in it, or if we've currently selected a piece - 
-  //       // that is, discard the clicks where a player clicks an empty square with no selected piece
-  //       case (Some((event, location)), isPlayerTurn, pieces, validMoves, validCaptures) if (
-  //         (pieces.contains(location) && !gameState.selectedPiece.now().isDefined) ||
-  //         (gameState.selectedPiece.now().isDefined)
-  //       ) =>
-  //         (event, location, gameState.player.color, isPlayerTurn, pieces.get(location), validMoves, validCaptures)
-  //     }
-  // }
 
   def mouseClickEvents(
     clickBus: EventBus[Option[(dom.MouseEvent, Location)]],
@@ -175,86 +144,6 @@ object GameEvents {
         e.preventDefault()
       }
   })
-
-  // def mouseClickEffects(
-  //   gameState: ClientGame
-  // ) = Observer[(dom.MouseEvent, Location, Color, Boolean, Option[Piece], Set[Location], Set[Location])](onNext = { case (e, clickedLocation, playerColor, isPlayerTurn, piece, validMoves, validCaptures) =>
-  //   if (isPlayerTurn) {
-  //     gameState.selectedPiece.now() match {
-  //       case Some((Some(currentPosition), _)) if (validMoves.contains(clickedLocation) || validCaptures.contains(clickedLocation)) => {
-  //         println(s"Moving piece from $currentPosition to $clickedLocation")
-  //         movePiece(gameState, currentPosition, clickedLocation)
-  //       }
-  //       case Some((Some(currentPosition), _)) if clickedLocation == currentPosition => {
-  //         println(s"Deselecting piece at $currentPosition")
-  //         gameState.selectedPiece.set(None) // deselect current piece
-  //       }
-  //       case Some((None, _)) => {
-  //         // not expected to be a reachable state as placing pieces is only supported with drag at the moment
-  //         println(s"No-op with click $clickedLocation")
-  //       }
-  //       case _ => {
-  //         // covers case where player has a piece selected and selects a piece of the same color or no piece is selected
-  //         // piece should be defined if selectedPiece is None as clickEvents filtered out cases where this doesn't hold.
-  //         // no-op if no piece is defined
-  //         piece.foreach { p =>
-  //           println(s"Selecting piece at $clickedLocation")
-  //           if (p.color == playerColor) gameState.selectedPiece.set(Some((Some(clickedLocation), p)))
-  //         }
-  //       }
-  //     }
-  //   } else {
-  //     // Perhaps should also set the current piece to None
-  //     e.preventDefault()
-  //   }
-  // })
-
-  def movePiece( 
-    gameState: ClientGame,
-    originalPosition: Location,
-    newPosition: Location
-  ): Unit = {
-    if (newPosition != originalPosition) {
-      gameState.piecesVar.update { pieces =>
-        pieces.get(originalPosition).map { pieceToMove =>
-          pieces - originalPosition + (newPosition -> pieceToMove)
-        }.getOrElse(pieces)
-      }
-
-      if (gameState.treasuresVar.now().contains(newPosition)) {
-        gameState.playerGoldVar.update(gold => gold + TreasureValue)
-        gameState.treasuresVar.update(treasures => treasures - newPosition)
-      }
-
-      gameState.connection.socket.send(write(MovePiece(gameState.player, originalPosition, newPosition)))
-      gameState.selectedPiece.set(None)
-      gameState.moveTurnBus.emit()
-    } 
-    else {
-      gameState.selectedPiece.set(None)
-    }
-  }
-
-  def placePiece(
-    gameState: ClientGame,
-    piece: Piece,
-    location: Location,
-  ): Unit = {
-    gameState.piecesVar.update { pieces =>
-      pieces + (location -> piece)
-    }
-
-    if (gameState.treasuresVar.now().contains(location)) {
-      gameState.playerGoldVar.update(gold => gold - piece.pieceType.value + TreasureValue)
-      gameState.treasuresVar.update(treasures => treasures - location)
-    } else {
-      gameState.playerGoldVar.update(gold => gold - piece.pieceType.value)
-    }
-
-    gameState.connection.socket.send(write(PlacePiece(gameState.player, piece, location)))
-    gameState.selectedPiece.set(None)
-    gameState.moveTurnBus.emit()
-  }
 
   def updateGameStateVariables(
     clientGameState: ClientGame,
