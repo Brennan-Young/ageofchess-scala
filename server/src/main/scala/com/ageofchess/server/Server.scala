@@ -94,55 +94,19 @@ object Server extends MainRoutes {
           connection.send(cask.Ws.Text(write(serverMessage)))
         }
       }
-      case MovePiece(player, from, to) => {
-        val action = PieceMove(from, to)
-        val nextGameState = game.computeNextState(action)
+      case playerAction: PlayerActionMessage => {
+        val nextGameState = game.validateAndGenerateNextState(playerAction.player, playerAction.toPlayerAction)
 
-        games.
-
-        if (player == game.playerToMove) {
-          game.pieces.get(from).foreach { piece =>
-            game.pieces.remove(from)
-            game.pieces.update(to, piece)
-            if (game.treasures.contains(to)) {
-              game.treasures.remove(to)
-              game.gold.get(player).foreach { prevGold =>
-                game.gold.update(player, prevGold + TreasureValue)
-              }
-            }
-            game.changeActivePlayer
-          }
-        } else {
-          // TODO no current op here, maybe a rejection message should be sent
+        nextGameState.foreach { nextState =>
+          games.update(gameId, nextState)
+          val serverMessage = UpdateBoardState(nextState.playerToMove, nextState.pieces, nextState.gold, nextState.treasures)
+          broadcastToPlayers(nextState, write(serverMessage))
         }
-        val serverMessage = UpdateBoardState(game.playerToMove, game.pieces.toMap, game.gold.toMap, game.treasures.toSet)
-        broadcastToPlayers(game, write(serverMessage))
-      }
-      case PlacePiece(player, piece, location) => {
-        if (player == game.playerToMove) {
-          game.pieces.update(location, piece)
-
-          game.gold.get(player).foreach { playerGold =>
-            val nextGold = if (game.treasures.contains(location)) {
-              playerGold - piece.pieceType.value + TreasureValue
-            } else {
-              playerGold - piece.pieceType.value
-            }
-
-            game.gold.update(player, nextGold)
-          }
-
-          game.treasures.remove(location)
-
-          game.changeActivePlayer
-        } else {}
-        val serverMessage = UpdateBoardState(game.playerToMove, game.pieces.toMap, game.gold.toMap, game.treasures.toSet)
-        broadcastToPlayers(game, write(serverMessage))
       }
     }
   }
 
-  def broadcastToPlayers(game: Game, message: String) = {
+  def broadcastToPlayers(game: GameState, message: String) = {
     playerChannels.get(game.white.id).foreach { connection =>
       connection.send(cask.Ws.Text(message))
     }

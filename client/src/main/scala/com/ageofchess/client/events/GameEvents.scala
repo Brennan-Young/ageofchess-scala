@@ -70,7 +70,7 @@ object GameEvents {
 
         for {
           action <- playerAction
-          nextState <- gameState.computeNextState(action)
+          nextState <- gameState.validateAndGenerateNextState(clientGame.player, action)
         } {
           val message: ClientMessage = action match {
             case PieceMove(f, t) => MovePiece(clientGame.player, f, t)
@@ -110,9 +110,8 @@ object GameEvents {
         selectedPiece match {
           case Some((Some(currentPosition), _)) if (validMoves.contains(clickedLocation) || validCaptures.contains(clickedLocation)) => {
             println(s"Moving piece from $currentPosition to $clickedLocation")
-            // movePiece(gameState, currentPosition, clickedLocation)
             val action = PieceMove(currentPosition, clickedLocation)
-            val nextState = gameState.computeNextState(action)
+            val nextState = gameState.validateAndGenerateNextState(clientGame.player, action)
 
             println(s"State update: ${gameState}, ${nextState}")
 

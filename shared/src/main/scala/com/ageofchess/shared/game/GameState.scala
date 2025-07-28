@@ -18,7 +18,46 @@ case class GameState(
     if (playerToMove == white) black else white
   }
 
-  def computeNextState(
+  def isValidMove(
+    player: Player,
+    playerAction: PlayerAction
+  ): Boolean = {
+
+    playerAction match {
+      case PieceMove(from, to) => player == playerToMove && isValidPieceMove(from, to)
+      case PiecePlacement(piece, to) => player == playerToMove && isValidPiecePlacement(player, piece, to)
+    }
+  }
+
+  private def isValidPieceMove(
+    from: Location,
+    to: Location
+  ): Boolean = {
+
+    val piece = pieces.get(from)
+
+    piece.exists { p =>
+      val b = BoardWithPieces(board.squares, pieces, treasures)
+      val moves = validMoves(b, from, p)
+      val captures = validCaptures(b, from, p)
+
+      moves.contains(to) || captures.contains(to)  
+    }
+  }
+
+  private def isValidPiecePlacement(
+    player: Player, 
+    piece: Piece,
+    to: Location
+  ): Boolean = {
+
+    val b = BoardWithPieces(board.squares, pieces, treasures)
+
+    validPiecePlacements(b, piece).contains(to) && gold.get(player).exists(playerGold => playerGold >= piece.pieceType.value)
+  }
+
+  def validateAndGenerateNextState(
+    player: Player,
     playerAction: PlayerAction
   ): Option[GameState] = {
 
@@ -46,6 +85,7 @@ case class GameState(
     for {
       nextPieces <- updatedPieces
       nextGold <- updatedGold
+      if isValidMove(player, playerAction)
     } yield {
       this.copy(
         pieces = nextPieces,
