@@ -72,11 +72,26 @@ case class GameState(
       }
     }
 
-    val updatedGold = if (treasures.contains(playerAction.to)) {
-      gold.get(playerToMove).map { playerGold =>
-        gold.updated(playerToMove, playerGold + TreasureValue)  
+    val updatedGold = playerAction match {
+      case PieceMove(from, to) => {
+        if (treasures.contains(playerAction.to)) {
+          gold.get(playerToMove).map { playerGold =>
+            gold.updated(playerToMove, playerGold + TreasureValue)  
+          }
+        } else Some(gold)
       }
-    } else Some(gold)
+      case PiecePlacement(piece, to) => {
+        if (treasures.contains(playerAction.to)) {
+          gold.get(playerToMove).map { playerGold =>
+            gold.updated(playerToMove, playerGold - piece.pieceType.value + TreasureValue)
+          }
+        } else {
+          gold.get(playerToMove).map { playerGold =>
+            gold.updated(playerToMove, playerGold - piece.pieceType.value)  
+          }
+        }
+      }
+    }
 
     val updatedTreasures = if (treasures.contains(playerAction.to)) {
       treasures - playerAction.to
