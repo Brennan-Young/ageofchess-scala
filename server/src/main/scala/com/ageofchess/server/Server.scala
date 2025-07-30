@@ -7,6 +7,7 @@ import com.ageofchess.shared.piece._
 import com.ageofchess.shared.game._
 import com.ageofchess.shared.Messages._
 import collection.mutable
+import com.ageofchess.shared.board.BoardGenerator
 
 object Server extends MainRoutes {
   @cask.staticFiles("/js/")
@@ -135,7 +136,7 @@ object Server extends MainRoutes {
     val (p1, p2) = if (coin == 1) (pendingGame.player1, playerId) else (playerId, pendingGame.player1)
     val player1 = Player(p1, White)
     val player2 = Player(p2, Black)
-    val board = defaultBoard3
+    val board = BoardGenerator.generateBoard(20)
     val pieces = mutable.Map(defaultPieces.toSeq: _*)
     val gold = mutable.Map(player1 -> 100, player2 -> 100)
     val treasures = mutable.Set(Location(0, 1))
