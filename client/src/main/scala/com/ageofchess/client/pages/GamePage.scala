@@ -25,7 +25,10 @@ class GamePage(val gameId: String, val pendingGame: PendingClientGame) {
           
           clientGame.boardVar.signal.map {
             case Some(board) => {
-              new GameStateRenderer(clientGame).render(board)
+              div(
+                h1(s"You are playing as ${player.color.toString}"),
+                new GameStateRenderer(clientGame).render(board)
+              )
             }
             case _ => div("Loading")
           }

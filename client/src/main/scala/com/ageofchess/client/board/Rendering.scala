@@ -12,13 +12,16 @@ import upickle.default._ // remove later
 import com.ageofchess.client.events.GameEvents._
 
 class GameStateRenderer(val clientGame: ClientGame) {
+
+  val squareSizePx = 50
+
   def render(
     board: Vector[Vector[SquareType]]
   ): HtmlElement = {
     val numColumns = board.headOption.map(_.size).getOrElse(0)
 
     div(
-      h1(s"You are playing as ${clientGame.player.color.toString}"),
+      cls := "game-container",
       div(
         cls := "board",
         styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
@@ -66,27 +69,31 @@ class GameStateRenderer(val clientGame: ClientGame) {
         }
       ),
       div(
-        cls := "piece-tray",
-        (clientGame.player.color match {
-          case White => whiteBuyablePieces
-          case Black => blackBuyablePieces
-        }).map { piece =>
-          img(
-            src := s"/assets/pieces/${piece.asset}",
-            cls := "tray-piece",
-            draggable := true,
-            onDragStart.map(e => (e, None, piece)) --> mouseDragStartBus.writer,
-            mouseDragStartEvents(mouseDragStartBus, clientGame) --> mouseDragStartEffects(clientGame)
-          )
-        }
-      ),
-      div(
-        cls := "player-gold",
-        child.text <-- clientGame.playerGoldSignal.map(gold => s"Your Gold: ${gold}")
-      ),
-      div(
-        cls := "opponent-gold",
-        child.text <-- clientGame.opponentGoldVar.signal.map(gold => s"Opponent's Gold: ${gold}")
+        cls := "right-sidebar",
+        div(
+          cls := "piece-tray",
+          (clientGame.player.color match {
+            case White => whiteBuyablePieces
+            case Black => blackBuyablePieces
+          }).map { piece =>
+            img(
+              src := s"/assets/pieces/${piece.asset}",
+              cls := "tray-piece",
+              styleAttr := s"width: ${squareSizePx}px; height: ${squareSizePx}px",
+              draggable := true,
+              onDragStart.map(e => (e, None, piece)) --> mouseDragStartBus.writer,
+              mouseDragStartEvents(mouseDragStartBus, clientGame) --> mouseDragStartEffects(clientGame)
+            )
+          }
+        ),
+        div(
+          cls := "player-gold",
+          child.text <-- clientGame.playerGoldSignal.map(gold => s"Your Gold: ${gold}")
+        ),
+        div(
+          cls := "opponent-gold",
+          child.text <-- clientGame.opponentGoldVar.signal.map(gold => s"Opponent's Gold: ${gold}")
+        )
       )
     )
   }
@@ -125,6 +132,7 @@ class GameStateRenderer(val clientGame: ClientGame) {
 
     div(
       cls := "board-square",
+      styleAttr := s"width: ${squareSizePx}px; height: ${squareSizePx}px",
       dataAttr("row") := location.row.toString,
       dataAttr("col") := location.col.toString,
       backgroundImage := s"url(/assets/${square.asset})",
@@ -141,6 +149,7 @@ class GameStateRenderer(val clientGame: ClientGame) {
           img(
             src := s"/assets/pieces/${p.asset}",
             cls := "piece",
+            styleAttr := s"width: 80%; height: 80%",
             // TODO: this doesn't work remotely as intended, need to read up on animations more
             // styleAttr := s"transform: translate(${location.y * 50}px, ${location.x}px);",
             onDragStart.map(e => (e, Some(location), p)) --> mouseDragStartBus.writer,
