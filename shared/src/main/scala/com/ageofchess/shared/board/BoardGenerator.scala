@@ -49,6 +49,19 @@ object BoardGenerator {
       }
     }
 
+    val mineLocations: mutable.Set[Location] = mutable.Set()
+
+    val mines = while (mineLocations.size < minesPerSide) {
+      val r = random.nextInt(half)
+      val c = random.nextInt(size)
+
+      val loc = Location(r, c)
+
+      mineLocations += loc
+    }
+
+    terrainMap ++= mineLocations.map(loc => (loc -> Mine))
+
     val x: Vector[Vector[SquareType]] = Vector.tabulate(half, size) { (row, col) =>
       terrainMap.getOrElse(Location(row, col), Terrain)
     }
