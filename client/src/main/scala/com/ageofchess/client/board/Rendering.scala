@@ -15,6 +15,18 @@ class GameStateRenderer(val clientGame: ClientGame) {
 
   val squareSizePx = 50
 
+  val squareSizeVar = Var(50)
+
+  def updateSize(): Unit = {
+    val windowWidth = dom.window.innerWidth
+    val size = (windowWidth / 25).toInt.min(60).max(30)
+    squareSizeVar.set(size)
+  }
+
+  // Attach to resize event
+  dom.window.onresize = _ => updateSize()
+  updateSize() // call initially
+
   def render(
     board: Vector[Vector[SquareType]]
   ): HtmlElement = {
@@ -79,7 +91,10 @@ class GameStateRenderer(val clientGame: ClientGame) {
             img(
               src := s"/assets/pieces/${piece.asset}",
               cls := "tray-piece",
-              styleAttr := s"width: ${squareSizePx}px; height: ${squareSizePx}px",
+              // styleAttr := s"width: ${squareSizePx}px; height: ${squareSizePx}px",
+              styleAttr <-- squareSizeVar.signal.map { size =>
+                s"width: ${size}px; height: ${size}px;"
+              },
               draggable := true,
               onDragStart.map(e => (e, None, piece)) --> mouseDragStartBus.writer,
               mouseDragStartEvents(mouseDragStartBus, clientGame) --> mouseDragStartEffects(clientGame)
