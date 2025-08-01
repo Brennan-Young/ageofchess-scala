@@ -10,6 +10,8 @@ import org.scalajs.dom
 import scala.util.Try
 import upickle.default._ // remove later
 import com.ageofchess.client.events.GameEvents._
+import scala.concurrent.duration._
+import com.ageofchess.client.board.Clock.clockDisplay
 
 class GameStateRenderer(val clientGame: ClientGame) {
 
@@ -27,16 +29,33 @@ class GameStateRenderer(val clientGame: ClientGame) {
   dom.window.onresize = _ => updateSize()
   updateSize() // call initially
 
+  val windowSize = Var((dom.window.innerWidth, dom.window.innerHeight))
+
+  dom.window.onresize = _ => windowSize.set((dom.window.innerWidth, dom.window.innerHeight))
+
   def render(
     board: Vector[Vector[SquareType]]
   ): HtmlElement = {
     val numColumns = board.headOption.map(_.size).getOrElse(0)
 
+    val squareSizeSignal = windowSize.signal.map { case (width, height) =>
+      val maxWidth = width * 0.95
+      val maxHeight = height * 0.95
+
+      val squareMaxWidth = maxWidth / (numColumns + 4)
+      val squareMaxHeight = maxHeight / numColumns
+
+      math.min(squareMaxHeight, squareMaxWidth).toInt.max(20).min(80)
+    }
+
     div(
       cls := "game-container",
       div(
         cls := "board",
-        styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
+        styleAttr <-- squareSizeSignal.map { size =>
+          s"grid-template-columns: repeat(${numColumns}, ${size}px);"
+        },
+        // styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
         board.zipWithIndex.map { case (row, rIdx) =>
           div(
             cls := "board-row",
@@ -49,7 +68,8 @@ class GameStateRenderer(val clientGame: ClientGame) {
                 renderableSquare,
                 clientGame.piecesVar.signal.map(pieces => pieces.get(location)),
                 clientGame.treasuresVar.signal.map(treasures => treasures.contains(location)),
-                clientGame.validMovesSignal.map(validMoves => validMoves.contains(location))
+                clientGame.validMovesSignal.map(validMoves => validMoves.contains(location)),
+                squareSizeSignal
               )
             }
           )
@@ -91,8 +111,7 @@ class GameStateRenderer(val clientGame: ClientGame) {
             img(
               src := s"/assets/pieces/${piece.asset}",
               cls := "tray-piece",
-              // styleAttr := s"width: ${squareSizePx}px; height: ${squareSizePx}px",
-              styleAttr <-- squareSizeVar.signal.map { size =>
+              styleAttr <-- squareSizeSignal.map { size =>
                 s"width: ${size}px; height: ${size}px;"
               },
               draggable := true,
@@ -105,10 +124,12 @@ class GameStateRenderer(val clientGame: ClientGame) {
           cls := "player-gold",
           child.text <-- clientGame.playerGoldSignal.map(gold => s"Your Gold: ${gold}")
         ),
+        clockDisplay(clientGame.playerClockVar, clientGame.isPlayerTurnSignal),
         div(
           cls := "opponent-gold",
           child.text <-- clientGame.opponentGoldVar.signal.map(gold => s"Opponent's Gold: ${gold}")
-        )
+        ),
+        clockDisplay(clientGame.opponentClockVar, clientGame.isPlayerTurnSignal.map(!_))
       )
     )
   }
@@ -132,7 +153,8 @@ class GameStateRenderer(val clientGame: ClientGame) {
     square: RenderableSquare,
     pieceSignal: Signal[Option[Piece]],
     locationHasTreasureSignal: Signal[Boolean],
-    isValidMoveOfCurrentSelectionSignal: Signal[Boolean]
+    isValidMoveOfCurrentSelectionSignal: Signal[Boolean],
+    squareSizeSignal: Signal[Int]
   ): HtmlElement = {
 
     val isValidCaptureOfCurrentSelectionSignal: Signal[Boolean] = clientGame.validCapturesSignal.map { captures =>
@@ -147,10 +169,11 @@ class GameStateRenderer(val clientGame: ClientGame) {
 
     div(
       cls := "board-square",
-      styleAttr := s"width: ${squareSizePx}px; height: ${squareSizePx}px",
+      styleAttr <-- squareSizeSignal.map { size =>
+        s"width: ${size}px; height: ${size}px; background-image: url(/assets/${square.asset});"
+      },
       dataAttr("row") := location.row.toString,
       dataAttr("col") := location.col.toString,
-      backgroundImage := s"url(/assets/${square.asset})",
       onDragOver.preventDefault --> { _ => },
       onDrop.preventDefault.mapTo(location) --> mouseDragDropBus.writer,
       mouseDragDropEvents(
@@ -164,9 +187,10 @@ class GameStateRenderer(val clientGame: ClientGame) {
           img(
             src := s"/assets/pieces/${p.asset}",
             cls := "piece",
-            styleAttr := s"width: 80%; height: 80%",
             // TODO: this doesn't work remotely as intended, need to read up on animations more
-            // styleAttr := s"transform: translate(${location.y * 50}px, ${location.x}px);",
+            // styleAttr <-- squareSizeSignal.map { size =>
+            //   s"transform: translate(${location.row * 50}px, ${location.col}px);"
+            // },
             onDragStart.map(e => (e, Some(location), p)) --> mouseDragStartBus.writer,
             mouseDragStartEvents(mouseDragStartBus, clientGame) --> mouseDragStartEffects(clientGame)
           )

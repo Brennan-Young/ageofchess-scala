@@ -8,6 +8,7 @@ import com.ageofchess.shared.piece._
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.Messages._
 import upickle.default._
+import scala.concurrent.duration._
 
 class ClientGame(
   val gameId: String,
@@ -23,6 +24,9 @@ class ClientGame(
 
   val playerGoldVar: Var[Int] = Var(100)
   val opponentGoldVar: Var[Int] = Var(100)
+
+  val playerClockVar = Var(5.minutes)
+  val opponentClockVar = Var(5.minutes)
   
   connection.socket.onmessage = event => {
     val message: GameMessage = read[GameMessage](event.data.toString)
