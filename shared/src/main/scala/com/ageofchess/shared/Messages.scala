@@ -3,10 +3,12 @@ package com.ageofchess.shared
 import upickle.default.{ReadWriter, readwriter, macroRW}
 import com.ageofchess.shared.board.Board
 import com.ageofchess.shared.game.Player
+import com.ageofchess.shared.game.PlayerClock
 import com.ageofchess.shared.piece.{Location, Piece}
 import com.ageofchess.shared.game._
 import collection.mutable
 import scala.concurrent.Await
+import scala.concurrent.duration.FiniteDuration
 
 object Messages {
 
@@ -33,6 +35,11 @@ object Messages {
   case class UpdateBoardState(nextActivePlayer: Player, pieces: Map[Location, Piece], gold: Map[Player, Int], treasures: Set[Location]) extends GameMessage
   object UpdateBoardState {
     implicit val rw: ReadWriter[UpdateBoardState] = macroRW
+  }
+
+  case class UpdatePlayerClocks(clocks: Map[Player, PlayerClock]) extends GameMessage
+  object UpdatePlayerClocks {
+    implicit val rw: ReadWriter[UpdatePlayerClocks] = macroRW
   }
 
   sealed trait ClientMessage

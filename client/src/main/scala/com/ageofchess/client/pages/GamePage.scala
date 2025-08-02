@@ -13,6 +13,7 @@ import org.scalajs.dom
 import com.ageofchess.client.api.Queries
 import com.ageofchess.client.api.Sockets
 import com.ageofchess.shared.Messages._
+import com.ageofchess.client.api.Sockets.GameSocket
 
 class GamePage(val gameId: String, val pendingGame: PendingClientGame) {
   def render(implicit ec: ExecutionContext): Div = {
@@ -20,6 +21,7 @@ class GamePage(val gameId: String, val pendingGame: PendingClientGame) {
       h1("Game Board"),
       child <-- pendingGame.initializedPlayersSignal.signal.flatMap {
         case Some((player, opponent, startingPlayer)) => {
+          // pendingGame.connection.socket.close()
           val clientGame = new ClientGame(gameId, player, opponent, startingPlayer, pendingGame.connection)
           clientGame.connection.socket.send(write(AwaitingBoard(player.id)))
           

@@ -8,6 +8,9 @@ import com.ageofchess.shared.game._
 import com.ageofchess.shared.Messages._
 import collection.mutable
 import com.ageofchess.shared.board.BoardGenerator
+import scala.concurrent.duration._
+import java.time.Instant
+import java.time.Duration
 
 object Server extends MainRoutes {
   @cask.staticFiles("/js/")
@@ -49,7 +52,7 @@ object Server extends MainRoutes {
     )
   }
 
-  val games = collection.mutable.Map.empty[String, GameState]
+  val games = collection.mutable.Map.empty[String, ActiveGame]
   val pendingGames = collection.mutable.Map.empty[String, PendingGame]
   val playerChannels = collection.mutable.Map.empty[String, cask.WsChannelActor]
 
@@ -74,35 +77,68 @@ object Server extends MainRoutes {
     }
   }
 
-  def handleMessage(gameId: String, game: GameState, message: String): Unit = {
+  def handleMessage(gameId: String, game: ActiveGame, message: String): Unit = {
     println(message)
     val parsedMessage = read[ClientMessage](message)
     parsedMessage match {
       case ConnectPlayer(p) => {
         // TODO: extract this out
-        playerChannels.get(game.white.id).foreach { connection =>
-          val assignments = AssignPlayers(game.white, game.black)
+        playerChannels.get(game.gameState.white.id).foreach { connection =>
+          val assignments = AssignPlayers(game.gameState.white, game.gameState.black)
           connection.send(cask.Ws.Text(write(assignments)))
         }
-        playerChannels.get(game.black.id).foreach { connection =>
-          val assignments = AssignPlayers(game.black, game.white)
+        playerChannels.get(game.gameState.black.id).foreach { connection =>
+          val assignments = AssignPlayers(game.gameState.black, game.gameState.white)
           connection.send(cask.Ws.Text(write(assignments)))  
         }
       }
       case AwaitingBoard(playerId) => {
-        val serverMessage = InitializeBoard(game.board, game.pieces.toMap, game.treasures.toSet)
+        val serverMessage = InitializeBoard(
+          game.gameState.board,
+          game.gameState.pieces.toMap,
+          game.gameState.treasures.toSet
+        )
         playerChannels.get(playerId).foreach { connection =>
           connection.send(cask.Ws.Text(write(serverMessage)))
         }
       }
       case playerAction: PlayerActionMessage => {
-        val nextGameState = game.validateAndGenerateNextState(playerAction.player, playerAction.toPlayerAction)
+        val nextGameState = game.gameState.validateAndGenerateNextState(playerAction.player, playerAction.toPlayerAction)
 
-        nextGameState.foreach { nextState =>
-          games.update(gameId, nextState)
-          val serverMessage = UpdateBoardState(nextState.playerToMove, nextState.pieces, nextState.gold, nextState.treasures)
-          broadcastToPlayers(nextState, write(serverMessage))
+        val nextClocks = game.clocks.get(playerAction.player).map { clock =>
+          val time = Instant.now().toEpochMilli()
+          val elapsed = time - clock.lastUpdate
+
+          val nextRemainder = clock.remaining - elapsed.millis
+          val nextClock = PlayerClock(nextRemainder, time)
+
+          game.clocks.updated(playerAction.player, nextClock)
         }
+
+        for {
+          state <- nextGameState
+          clock <- nextClocks
+        } {
+
+          val nextGame = game.copy(gameState = state, clocks = clock)
+
+          games.update(gameId, nextGame)
+          val serverMessage = UpdateBoardState(state.playerToMove, state.pieces, state.gold, state.treasures)
+          broadcastToPlayers(state, write(serverMessage))
+
+          val clockMessage = UpdatePlayerClocks(clock)
+
+          broadcastToPlayers(state, write(clockMessage))
+        }
+
+        // nextGameState.foreach { nextState =>
+
+        //   val nextGame = game.copy(gameState = nextState)
+
+        //   games.update(gameId, nextGame)
+        //   val serverMessage = UpdateBoardState(nextState.playerToMove, nextState.pieces, nextState.gold, nextState.treasures)
+        //   broadcastToPlayers(nextState, write(serverMessage))
+        // }
       }
     }
   }
@@ -152,17 +188,12 @@ object Server extends MainRoutes {
       player1
     )
 
-    val game = Game(
-      pendingGame.gameId,
-      player1,
-      player2,
-      board,
-      pieces,
-      treasures,
-      gold
+    val activeGame = ActiveGame(
+      gameState,
+      Map(player1 -> PlayerClock(1.minute, Instant.now().toEpochMilli), player2 -> PlayerClock(1.minute, Instant.now().toEpochMilli))
     )
 
-    games.update(pendingGame.gameId, gameState)
+    games.update(pendingGame.gameId, activeGame)
     playerChannels.update(playerId, channel)
     pendingGames.remove(pendingGame.gameId)
   }

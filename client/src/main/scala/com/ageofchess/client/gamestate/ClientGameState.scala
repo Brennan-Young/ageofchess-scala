@@ -9,6 +9,7 @@ import com.ageofchess.shared.board._
 import com.ageofchess.shared.Messages._
 import upickle.default._
 import scala.concurrent.duration._
+import org.scalajs.dom.MessageEvent
 
 class ClientGame(
   val gameId: String,
@@ -27,8 +28,8 @@ class ClientGame(
 
   val playerClockVar = Var(5.minutes)
   val opponentClockVar = Var(5.minutes)
-  
-  connection.socket.onmessage = event => {
+
+  connection.socket.addEventListener("message", { event: MessageEvent =>
     val message: GameMessage = read[GameMessage](event.data.toString)
     println(s"Received game message: $message")
     message match {
@@ -38,9 +39,31 @@ class ClientGame(
         piecesVar.set(pieces)
         treasuresVar.set(treasures)
       }
+      case UpdatePlayerClocks(clocks) => {
+        clocks.get(player).foreach { clock =>
+          playerClockVar.update(_ => clock.remaining)
+        }
+        clocks.get(opponent).foreach { clock =>
+          opponentClockVar.update(_ => clock.remaining)  
+        }
+      }
+      case UpdateBoardState(nextActivePlayer, pieces, gold, treasures) => {
+        val playerToMove = playerToMoveSignal
+        piecesVar.set(pieces)
+        treasuresVar.set(treasures)
+        if (nextActivePlayer == player) {
+          moveTurnBus.emit() // TODO: take a closer look here.  moveTurnBus.emit() is called in GameEvents which sends the move over to the opponent, and this brings it back to the player.  So it "works out".  But maybe moveTurnBus should keep track of players more explicitly.
+        }
+        gold.get(player).foreach { updatedGold =>
+          playerGoldVar.set(updatedGold)
+        }
+        gold.get(opponent).foreach { updatedGold =>
+          opponentGoldVar.set(updatedGold)
+        }
+      }
       case _ =>
     }
-  }
+  })
 
   val moveTurnBus = new EventBus[Unit]
   val playerToMoveSignal: Signal[Player] = moveTurnBus.events.scanLeft(startingPlayer) { case (p, _) =>
@@ -122,6 +145,7 @@ class PendingClientGame(
     connection.socket.send(write(ConnectPlayer("placeholder")))
   }
 
+  // TODO: Create a new socket when creating the full game instead of reusing - this keeps getting messages
   connection.socket.onmessage = event => {
     val message: GameMessage = read[GameMessage](event.data.toString)
     println(s"Received pending game message: $message")
