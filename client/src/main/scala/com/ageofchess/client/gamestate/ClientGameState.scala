@@ -11,7 +11,7 @@ import upickle.default._
 import scala.concurrent.duration._
 import org.scalajs.dom.MessageEvent
 
-class ClientGame(
+class PlayerGameView(
   val gameId: String,
   val player: Player,
   val opponent: Player,
@@ -67,7 +67,6 @@ class ClientGame(
 
   val moveTurnBus = new EventBus[Unit]
   val playerToMoveSignal: Signal[Player] = moveTurnBus.events.scanLeft(startingPlayer) { case (p, _) =>
-    println(p)
     if (p == player) opponent else player 
   }
 
@@ -145,8 +144,7 @@ class PendingClientGame(
     connection.socket.send(write(ConnectPlayer("placeholder")))
   }
 
-  // TODO: Create a new socket when creating the full game instead of reusing - this keeps getting messages
-  connection.socket.onmessage = event => {
+  val assignPlayers: MessageEvent => Unit = event => {
     val message: GameMessage = read[GameMessage](event.data.toString)
     println(s"Received pending game message: $message")
     message match {
@@ -160,4 +158,6 @@ class PendingClientGame(
       case _ =>
     }
   }
+
+  connection.socket.addEventListener("message", assignPlayers)
 }

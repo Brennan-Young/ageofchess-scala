@@ -1,6 +1,6 @@
 package com.ageofchess.client.events
 
-import com.ageofchess.client.gamestate.ClientGame
+import com.ageofchess.client.gamestate.PlayerGameView
 import com.raquo.laminar.api.L._
 import org.scalajs.dom
 import com.ageofchess.shared.piece._
@@ -17,13 +17,13 @@ object GameEvents {
 
   def mouseDragStartEvents(
     dragBus: EventBus[(dom.DragEvent, Option[Location], Piece)],
-    gameState: ClientGame
+    gameState: PlayerGameView
   ): EventStream[(dom.DragEvent, Option[Location], Piece, Boolean)] = {
 
     dragBus.events.withCurrentValueOf(gameState.isPlayerTurnSignal)  
   }
 
-  def mouseDragStartEffects(gameState: ClientGame) = Observer[(dom.DragEvent, Option[Location], Piece, Boolean)](onNext = 
+  def mouseDragStartEffects(gameState: PlayerGameView) = Observer[(dom.DragEvent, Option[Location], Piece, Boolean)](onNext = 
     {
       case (event, loc, piece, isPlayerTurn) =>
         if (isPlayerTurn && piece.color == gameState.player.color) {
@@ -36,7 +36,7 @@ object GameEvents {
 
   def mouseDragDropEvents(
     dropBus: EventBus[Location],
-    clientGame: ClientGame,
+    clientGame: PlayerGameView,
     isValidMoveOfCurrentSelectionSignal: Signal[Boolean],
     location: Location
   ) = {
@@ -47,7 +47,7 @@ object GameEvents {
   }
 
   def mouseDragDropEffects(
-    clientGame: ClientGame
+    clientGame: PlayerGameView
   ) = {
     Observer[(Location, GameState, Option[(Option[Location], Piece)], Int, Boolean)](onNext = {
       case (draggedToLocation, gameState, selectedPiece, playerGold, isValidMove) =>
@@ -85,7 +85,7 @@ object GameEvents {
 
   def mouseClickEvents(
     clickBus: EventBus[Option[(dom.MouseEvent, Location)]],
-    clientGame: ClientGame
+    clientGame: PlayerGameView
   ): EventStream[(dom.MouseEvent, Location, GameState, Boolean, Option[Piece], Set[Location], Set[Location], Option[(Option[Location], Piece)])] = {
 
     clickBus
@@ -103,7 +103,7 @@ object GameEvents {
   }
 
   def mouseClickEffects(
-    clientGame: ClientGame
+    clientGame: PlayerGameView
   ) = Observer[(dom.MouseEvent, Location, GameState, Boolean, Option[Piece], Set[Location], Set[Location], Option[(Option[Location], Piece)])](onNext = {
     case (e, clickedLocation, gameState, isPlayerTurn, piece, validMoves, validCaptures, selectedPiece) =>
       if (isPlayerTurn) {
@@ -145,7 +145,7 @@ object GameEvents {
   })
 
   def updateGameStateVariables(
-    clientGameState: ClientGame,
+    clientGameState: PlayerGameView,
     nextGameState: GameState
   ): Unit = {
     clientGameState.piecesVar.update(pieces => nextGameState.pieces)

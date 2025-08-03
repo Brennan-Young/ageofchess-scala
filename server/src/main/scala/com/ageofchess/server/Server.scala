@@ -112,7 +112,9 @@ object Server extends MainRoutes {
           val nextRemainder = clock.remaining - elapsed.millis
           val nextClock = PlayerClock(nextRemainder, time)
 
-          game.clocks.updated(playerAction.player, nextClock)
+          game.clocks.map { case (player, clock) =>
+            player -> (if (player == playerAction.player) nextClock else clock.copy(lastUpdate = time))
+          }
         }
 
         for {
@@ -130,15 +132,6 @@ object Server extends MainRoutes {
 
           broadcastToPlayers(state, write(clockMessage))
         }
-
-        // nextGameState.foreach { nextState =>
-
-        //   val nextGame = game.copy(gameState = nextState)
-
-        //   games.update(gameId, nextGame)
-        //   val serverMessage = UpdateBoardState(nextState.playerToMove, nextState.pieces, nextState.gold, nextState.treasures)
-        //   broadcastToPlayers(nextState, write(serverMessage))
-        // }
       }
     }
   }

@@ -2,7 +2,7 @@ package com.ageofchess.client.pages
 
 import com.raquo.laminar.api.L._
 import com.ageofchess.client.board.GameStateRenderer
-import com.ageofchess.client.gamestate.{PendingClientGame, ClientGame}
+import com.ageofchess.client.gamestate.{PendingClientGame, PlayerGameView}
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.piece._
 import com.ageofchess.shared.game._
@@ -22,7 +22,8 @@ class GamePage(val gameId: String, val pendingGame: PendingClientGame) {
       child <-- pendingGame.initializedPlayersSignal.signal.flatMap {
         case Some((player, opponent, startingPlayer)) => {
           // pendingGame.connection.socket.close()
-          val clientGame = new ClientGame(gameId, player, opponent, startingPlayer, pendingGame.connection)
+          val clientGame = new PlayerGameView(gameId, player, opponent, startingPlayer, pendingGame.connection)
+          pendingGame.connection.socket.removeEventListener("message", pendingGame.assignPlayers)
           clientGame.connection.socket.send(write(AwaitingBoard(player.id)))
           
           clientGame.boardVar.signal.map {

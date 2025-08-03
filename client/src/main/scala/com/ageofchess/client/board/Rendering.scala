@@ -5,7 +5,7 @@ import com.ageofchess.shared.Messages._
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.piece._
 import com.ageofchess.client.api.Sockets
-import com.ageofchess.client.gamestate.ClientGame
+import com.ageofchess.client.gamestate.PlayerGameView
 import org.scalajs.dom
 import scala.util.Try
 import upickle.default._ // remove later
@@ -13,7 +13,7 @@ import com.ageofchess.client.events.GameEvents._
 import scala.concurrent.duration._
 import com.ageofchess.client.board.Clock.clockDisplay
 
-class GameStateRenderer(val clientGame: ClientGame) {
+class GameStateRenderer(val clientGame: PlayerGameView) {
 
   val squareSizePx = 50
 
