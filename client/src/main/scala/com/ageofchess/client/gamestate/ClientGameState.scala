@@ -161,3 +161,15 @@ class PendingClientGame(
 
   connection.socket.addEventListener("message", assignPlayers)
 }
+
+sealed trait UserRole
+case object Player extends UserRole
+case object Spectator extends UserRole
+
+class GameConnection(
+  val gameId: String,
+  val connection: GameSocket
+) {
+
+  val userRoleVar: Var[Option[UserRole]] = Var(None)
+}

@@ -76,29 +76,6 @@ class GameStateRenderer(val clientGame: PlayerGameView) {
         },
         onClick.map { event => findSquare(event.target).map(event -> _) } --> mouseClickBus.writer,
         mouseClickEvents(mouseClickBus, clientGame) --> mouseClickEffects(clientGame)
-        // onMountCallback { ctx =>
-        //   clientGame.connection.socket.onmessage = event => {
-        //     val message: GameMessage = read[GameMessage](event.data.toString)
-        //     val playerToMove = clientGame.playerToMoveSignal.observe(ctx.owner)
-        //     println(s"Received game message: $message")
-        //     message match {
-        //       case UpdateBoardState(nextActivePlayer, pieces, gold, treasures) => {
-        //         clientGame.piecesVar.set(pieces)
-        //         clientGame.treasuresVar.set(treasures)
-        //         if (nextActivePlayer == clientGame.player && playerToMove.now() != clientGame.player) {
-        //           clientGame.moveTurnBus.emit()
-        //         }
-        //         gold.get(clientGame.player).foreach { updatedGold =>
-        //           clientGame.playerGoldVar.set(updatedGold)
-        //         }
-        //         gold.get(clientGame.opponent).foreach { updatedGold =>
-        //           clientGame.opponentGoldVar.set(updatedGold)
-        //         }
-        //       }
-        //       case _ => println("y")
-        //     }
-        //   }
-        // }
       ),
       div(
         cls := "right-sidebar",
