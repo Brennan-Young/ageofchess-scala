@@ -47,4 +47,9 @@ object Sockets {
 
     new dom.WebSocket(ws)
   }
+
+  def onOpenOrNow(socket: dom.WebSocket)(action: => Unit): Unit = {
+    socket.onopen = _ => action
+    if (socket.readyState == dom.WebSocket.OPEN) action
+  }
 }

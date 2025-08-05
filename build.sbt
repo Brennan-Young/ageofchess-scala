@@ -5,6 +5,7 @@ ThisBuild / scalaVersion     := "2.12.18"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
 ThisBuild / organization     := "com.ageofchess"
 ThisBuild / organizationName := "com"
+ThisBuild / scalacOptions ++= List("-Ywarn-unused")
 
 enablePlugins(ScalaJSPlugin)
 

@@ -1,8 +1,7 @@
 package com.ageofchess.client.gamestate
 
 import com.raquo.laminar.api.L._
-import com.ageofchess.client.api.Sockets
-import com.ageofchess.client.api.Sockets.GameSocket
+import com.ageofchess.client.api.Sockets.{GameSocket, onOpenOrNow}
 import com.ageofchess.shared.game._
 import com.ageofchess.shared.piece._
 import com.ageofchess.shared.board._
@@ -140,7 +139,12 @@ class PendingClientGame(
     }
   }
 
+  println(connection.socket.readyState)
+
+  // TODO: This is not guaranteed to be closed by the time this class is instantiated.  Use something other than onopen
   connection.socket.onopen = _ => {
+    println(connection.socket.readyState)
+    println("sending connection message")
     connection.socket.send(write(ConnectPlayer("placeholder")))
   }
 
@@ -163,13 +167,44 @@ class PendingClientGame(
 }
 
 sealed trait UserRole
-case object Player extends UserRole
-case object Spectator extends UserRole
+case object PlayerRole extends UserRole
+case object SpectatorRole extends UserRole
 
 class GameConnection(
   val gameId: String,
-  val connection: GameSocket
+  val connection: GameSocket,
+  val role: UserRole,
+  val gameMetadataVar: Var[GameMetadata] = Var(GameMetadata(None, None, None))
 ) {
 
-  val userRoleVar: Var[Option[UserRole]] = Var(None)
+  val unzippedMetadataSignal = gameMetadataVar.signal.map { metadata =>
+    (metadata.player1, metadata.player2, metadata.startingPlayer)
+  }
+
+  val assignPlayers: MessageEvent => Unit = event => {
+    val message: GameMessage = read[GameMessage](event.data.toString)
+    println(s"Received pending game message: $message")
+    message match {
+      case AssignPlayers(player, opponent) => {
+        println("Assigning players")
+        val startingPlayer = if (player.color == White) player else opponent
+        val gameMetadata = GameMetadata(Some(player), Some(opponent), Some(startingPlayer))
+        gameMetadataVar.set(gameMetadata)
+      }
+      case _ =>
+    }
+  }
+
+  onOpenOrNow(connection.socket) {
+    // TODO: don't do this when connecting a spectator.  need to broadcast to spectators as well that the game is set
+    connection.socket.send(write(ConnectPlayer("placeholder")))
+  }
+
+  connection.socket.addEventListener("message", assignPlayers)
 }
+
+case class GameMetadata(
+  player1: Option[Player],
+  player2: Option[Player],
+  startingPlayer: Option[Player]
+)

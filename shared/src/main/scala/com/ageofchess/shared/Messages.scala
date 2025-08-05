@@ -1,14 +1,11 @@
 package com.ageofchess.shared
 
-import upickle.default.{ReadWriter, readwriter, macroRW}
+import upickle.default.{ReadWriter, macroRW}
 import com.ageofchess.shared.board.Board
 import com.ageofchess.shared.game.Player
 import com.ageofchess.shared.game.PlayerClock
 import com.ageofchess.shared.piece.{Location, Piece}
 import com.ageofchess.shared.game._
-import collection.mutable
-import scala.concurrent.Await
-import scala.concurrent.duration.FiniteDuration
 
 object Messages {
 
@@ -42,6 +39,11 @@ object Messages {
     implicit val rw: ReadWriter[UpdatePlayerClocks] = macroRW
   }
 
+  case class UpdateLobbies(lobbies: List[Lobby]) extends GameMessage
+  object UpdateLobbies {
+    implicit val rw: ReadWriter[UpdateLobbies] = macroRW
+  }
+
   sealed trait ClientMessage
   object ClientMessage {
     implicit val rw: ReadWriter[ClientMessage] = macroRW
@@ -55,6 +57,11 @@ object Messages {
   case class AwaitingBoard(playerId: String) extends ClientMessage
   object AwaitingBoard {
     implicit val rw: ReadWriter[AwaitingBoard] = macroRW
+  }
+
+  case class FetchLobbies() extends ClientMessage
+  object FetchLobbies {
+    implicit val rw: ReadWriter[FetchLobbies] = macroRW
   }
 
   sealed trait PlayerActionMessage extends ClientMessage {

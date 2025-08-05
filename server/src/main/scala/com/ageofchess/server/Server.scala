@@ -38,7 +38,7 @@ object Server extends MainRoutes {
   }
 
   @cask.get("/game/:gameId")
-  def serveGamePage(gameId: String, vscodeBrowserReqId: Option[String] = None): Response[String] = {
+  def serveGamePage(gameId: String, as: Option[String] = None, vscodeBrowserReqId: Option[String] = None): Response[String] = {
     cask.Response(
       """<!DOCTYPE html>
         <html>
@@ -83,6 +83,7 @@ object Server extends MainRoutes {
     parsedMessage match {
       case ConnectPlayer(p) => {
         // TODO: extract this out
+        // TODO: Maybe don't bother with this ConnectPlayer thing. When the game is created in matchGame, automatically broadcast out the information
         playerChannels.get(game.gameState.white.id).foreach { connection =>
           val assignments = AssignPlayers(game.gameState.white, game.gameState.black)
           connection.send(cask.Ws.Text(write(assignments)))

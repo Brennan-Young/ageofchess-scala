@@ -35,13 +35,11 @@ object BoardGenerator {
       val loc = Location(row, col)
 
       if (random.nextDouble() < seedForestProbability) {
-        println("generating forest at " + loc)
         val forest = growForest(loc, maxSize = 8, spreadChance = 0.2, random)
         forest.foreach { tree =>
           terrainMap += (tree -> Trees)
         }
       } else if (random.nextDouble() < seedMountainProbability) {
-        println("generating mountain at " + loc)
         val mountainRange = growMountainRange(loc, length = 6, random)
         mountainRange.foreach { mountain =>
           terrainMap += (mountain -> Rocks)  
@@ -98,8 +96,6 @@ object BoardGenerator {
       }
     }
 
-    println("Forest: " + forest)
-
     forest.toSet
   }
 
@@ -133,8 +129,6 @@ object BoardGenerator {
         range += branch
       }
     }
-
-    println("Mountain: " + range)
 
     range.toSet
   }
