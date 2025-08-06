@@ -11,6 +11,7 @@ import com.ageofchess.shared.board.BoardGenerator
 import scala.concurrent.duration._
 import java.time.Instant
 import java.time.Duration
+import cask.endpoints.WsChannelActor
 
 object Server extends MainRoutes {
   @cask.staticFiles("/js/")
@@ -55,20 +56,26 @@ object Server extends MainRoutes {
   val games = collection.mutable.Map.empty[String, ActiveGame]
   val pendingGames = collection.mutable.Map.empty[String, PendingGame]
   val playerChannels = collection.mutable.Map.empty[String, cask.WsChannelActor]
+  val userChannels = collection.mutable.Map.empty[String, WsChannelActor]
 
   @cask.websocket("/game/:gameId")
-  def gameSocket(gameId: String): cask.WebsocketResult = {
+  def gameSocket(gameId: String, as: String): cask.WebsocketResult = {
     cask.WsHandler { channel =>
-      games.get(gameId) match {
-        case Some(game) => // TODO: send some sort of "game full" message
-        case None => {
-          pendingGames.get(gameId) match {
-            case Some(game) => matchGame(game, channel)
-            case None => createGame(gameId, channel)
+      as match {
+        case "player" => {
+          games.get(gameId) match {
+            case Some(game) => // TODO: send some sort of "game full" message
+            case None => {
+              pendingGames.get(gameId) match {
+                case Some(game) => matchGame(game, channel)
+                case None => createGame(gameId, channel)
+              }
+            }
           }
         }
+        case "spectator" => println("user joining as spectator")
       }
-
+    
       cask.WsActor {
         case cask.Ws.Text(msg) => {
           games.get(gameId).foreach(game => handleMessage(gameId, game, msg))
@@ -127,13 +134,21 @@ object Server extends MainRoutes {
 
           games.update(gameId, nextGame)
           val serverMessage = UpdateBoardState(state.playerToMove, state.pieces, state.gold, state.treasures)
-          broadcastToPlayers(state, write(serverMessage))
+          broadcastToUsers(nextGame, write(serverMessage))
 
           val clockMessage = UpdatePlayerClocks(clock)
 
-          broadcastToPlayers(state, write(clockMessage))
+          broadcastToUsers(nextGame, write(clockMessage))
         }
       }
+    }
+  }
+
+  def broadcastToUsers(game: ActiveGame, message: String) = {
+    game.allAssociatedClients.foreach { user =>
+      userChannels.get(user.id).foreach { connection =>
+        connection.send(cask.Ws.Text(message))  
+      }  
     }
   }
 
@@ -184,7 +199,9 @@ object Server extends MainRoutes {
 
     val activeGame = ActiveGame(
       gameState,
-      Map(player1 -> PlayerClock(1.minute, Instant.now().toEpochMilli), player2 -> PlayerClock(1.minute, Instant.now().toEpochMilli))
+      Map(player1 -> PlayerClock(1.minute, Instant.now().toEpochMilli), player2 -> PlayerClock(1.minute, Instant.now().toEpochMilli)),
+      List(player1, player2),
+      List()
     )
 
     games.update(pendingGame.gameId, activeGame)

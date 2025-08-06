@@ -24,6 +24,12 @@ object Messages {
     implicit val rw: ReadWriter[AssignPlayers] = macroRW
   }
 
+  // TODO: Use this with a playerId-based GamePage
+  case class AssignPlayers2(white: Player, black: Player) extends GameMessage
+  object AssignPlayers2 {
+    implicit val rw: ReadWriter[AssignPlayers2] = macroRW
+  }
+
   case class UpdatePieces(nextActivePlayer: Player, pieces: Map[Location, Piece]) extends GameMessage
   object UpdatePieces {
     implicit val rw: ReadWriter[UpdatePieces] = macroRW

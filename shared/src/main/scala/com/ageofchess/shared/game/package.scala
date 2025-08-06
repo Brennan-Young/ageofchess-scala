@@ -6,10 +6,25 @@ import collection.mutable
 import com.ageofchess.shared.board._
 
 package object game {
-  case class Player(id: String, color: Color)
+  sealed trait GameUser {
+    def id: String
+  }
+
+  object GameUser {
+    implicit val rw: ReadWriter[GameUser] = macroRW
+  }
+
+  case class Player(id: String, color: Color) extends GameUser
 
   object Player {
     implicit val rw: ReadWriter[Player] = macroRW
+  }
+
+  // TODO: A spectator is not an element of "pure" chess the way a player is - move this
+  case class Spectator(id: String) extends GameUser
+
+  object Spectator {
+    implicit val rw: ReadWriter[Spectator] = macroRW
   }
 
   case class Game(

@@ -166,9 +166,15 @@ class PendingClientGame(
   connection.socket.addEventListener("message", assignPlayers)
 }
 
-sealed trait UserRole
-case object PlayerRole extends UserRole
-case object SpectatorRole extends UserRole
+sealed trait UserRole {
+  def toString: String
+}
+case object PlayerRole extends UserRole {
+  override def toString = "player"
+}
+case object SpectatorRole extends UserRole {
+  override def toString = "spectator"
+}
 
 class GameConnection(
   val gameId: String,

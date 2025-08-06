@@ -3,6 +3,7 @@ package com.ageofchess.client.api
 import org.scalajs.dom
 import com.ageofchess.shared.piece._
 import upickle.default._
+import com.ageofchess.client.gamestate.UserRole
 
 object Sockets {
   // val ws = if (dom.window.location.protocol == "https:") {
@@ -26,27 +27,28 @@ object Sockets {
   // }
 
   class GameSocket(
-    gameId: String
+    gameId: String,
+    role: UserRole
   ) {
 
     val ws = if (dom.window.location.protocol == "https:") {
-      s"wss://${dom.window.location.host}/game/${gameId}"
+      s"wss://${dom.window.location.host}/game/${gameId}?as=${role.toString}"
     } else {
-      s"ws://${dom.window.location.host}/game/${gameId}"
+      s"ws://${dom.window.location.host}/game/${gameId}?as=${role.toString}"
     }
 
     val socket = new dom.WebSocket(ws)
   }
 
-  def buildSocket(gameId: String) = {
-    val ws = if (dom.window.location.protocol == "https:") {
-      s"wss://${dom.window.location.host}/game/${gameId}"
-    } else {
-      s"ws://${dom.window.location.host}/game/${gameId}"
-    }
+  // def buildSocket(gameId: String) = {
+  //   val ws = if (dom.window.location.protocol == "https:") {
+  //     s"wss://${dom.window.location.host}/game/${gameId}"
+  //   } else {
+  //     s"ws://${dom.window.location.host}/game/${gameId}"
+  //   }
 
-    new dom.WebSocket(ws)
-  }
+  //   new dom.WebSocket(ws)
+  // }
 
   def onOpenOrNow(socket: dom.WebSocket)(action: => Unit): Unit = {
     socket.onopen = _ => action

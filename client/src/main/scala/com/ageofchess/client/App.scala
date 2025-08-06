@@ -40,7 +40,7 @@ object Main {
           case Some((gameId, role)) =>
             val connection = new GameConnection(
               gameId,
-              new GameSocket(gameId),
+              new GameSocket(gameId, role),
               role
             )
 
