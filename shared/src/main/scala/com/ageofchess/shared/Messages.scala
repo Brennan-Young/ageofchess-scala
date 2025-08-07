@@ -2,7 +2,7 @@ package com.ageofchess.shared
 
 import upickle.default.{ReadWriter, macroRW}
 import com.ageofchess.shared.board.Board
-import com.ageofchess.shared.game.Player
+import com.ageofchess.shared.user.Player
 import com.ageofchess.shared.game.PlayerClock
 import com.ageofchess.shared.piece.{Location, Piece}
 import com.ageofchess.shared.game._

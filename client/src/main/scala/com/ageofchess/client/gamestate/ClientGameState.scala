@@ -4,8 +4,11 @@ import com.raquo.laminar.api.L._
 import com.ageofchess.client.api.Sockets.{GameSocket, onOpenOrNow}
 import com.ageofchess.shared.game._
 import com.ageofchess.shared.piece._
+import com.ageofchess.shared.user.UserId
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.Messages._
+import com.ageofchess.shared.user.Player
+import com.ageofchess.shared.user.UserRole
 import upickle.default._
 import scala.concurrent.duration._
 import org.scalajs.dom.MessageEvent
@@ -166,36 +169,28 @@ class PendingClientGame(
   connection.socket.addEventListener("message", assignPlayers)
 }
 
-sealed trait UserRole {
-  def toString: String
-}
-case object PlayerRole extends UserRole {
-  override def toString = "player"
-}
-case object SpectatorRole extends UserRole {
-  override def toString = "spectator"
-}
-
 class GameConnection(
+  val userId: UserId,
   val gameId: String,
   val connection: GameSocket,
   val role: UserRole,
-  val gameMetadataVar: Var[GameMetadata] = Var(GameMetadata(None, None, None))
+  val gameMetadataVar: Var[Option[GameMetadata]] = Var(None)
 ) {
-
-  val unzippedMetadataSignal = gameMetadataVar.signal.map { metadata =>
-    (metadata.player1, metadata.player2, metadata.startingPlayer)
-  }
 
   val assignPlayers: MessageEvent => Unit = event => {
     val message: GameMessage = read[GameMessage](event.data.toString)
     println(s"Received pending game message: $message")
     message match {
-      case AssignPlayers(player, opponent) => {
+      // case AssignPlayers(player, opponent) => {
+      //   println("Assigning players")
+      //   val startingPlayer = if (player.color == White) player else opponent
+      //   val gameMetadata = GameMetadata(Some(player), Some(opponent), Some(startingPlayer))
+      //   gameMetadataVar.set(gameMetadata)
+      // }
+      case AssignPlayers2(white, black) => {
         println("Assigning players")
-        val startingPlayer = if (player.color == White) player else opponent
-        val gameMetadata = GameMetadata(Some(player), Some(opponent), Some(startingPlayer))
-        gameMetadataVar.set(gameMetadata)
+        val gameMetadata = GameMetadata(white, black)
+        gameMetadataVar.set(Some(gameMetadata))
       }
       case _ =>
     }
@@ -210,7 +205,6 @@ class GameConnection(
 }
 
 case class GameMetadata(
-  player1: Option[Player],
-  player2: Option[Player],
-  startingPlayer: Option[Player]
+  white: Player,
+  black: Player
 )

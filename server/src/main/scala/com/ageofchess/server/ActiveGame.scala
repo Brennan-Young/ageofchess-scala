@@ -1,9 +1,7 @@
 package com.ageofchess.server
 
 import com.ageofchess.shared.game.GameState
-import com.ageofchess.shared.game.Player
-import com.ageofchess.shared.game.Spectator
-import com.ageofchess.shared.game.GameUser
+import com.ageofchess.shared.user.{GameUser, Player, Spectator}
 import com.ageofchess.shared.game.PlayerClock
 
 case class ActiveGame(

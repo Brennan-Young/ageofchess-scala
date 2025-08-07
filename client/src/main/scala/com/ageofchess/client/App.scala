@@ -17,14 +17,17 @@ import scala.concurrent.ExecutionContext
 import com.ageofchess.client.pages._
 import com.ageofchess.client.gamestate.PendingClientGame
 import com.ageofchess.client.api.Sockets.GameSocket
-import com.ageofchess.client.gamestate.{UserRole, PlayerRole, SpectatorRole}
+import com.ageofchess.shared.user.{UserRole, PlayerRole, SpectatorRole}
 import com.ageofchess.client.gamestate.GameConnection
+import com.ageofchess.shared.user.UserId
 
 object Main {
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
 
   def main(args: Array[String]): Unit = {
     val currentPath = org.scalajs.dom.window.location.pathname
+
+    val userId = UserId.generate()
 
     dom.document.head.appendChild {
       val link = dom.document.createElement("link")
@@ -39,12 +42,13 @@ object Main {
         parseGameRoute() match {
           case Some((gameId, role)) =>
             val connection = new GameConnection(
+              userId,
               gameId,
-              new GameSocket(gameId, role),
+              new GameSocket(userId, gameId, role),
               role
             )
 
-            new GamePage2(gameId, connection).render
+            new GamePage2(userId, gameId, connection).render
 
           case None => NotFoundPage.render
         }

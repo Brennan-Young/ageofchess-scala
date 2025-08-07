@@ -1,6 +1,6 @@
 package com.ageofchess.shared
 
-import com.ageofchess.shared.game.Player
+import com.ageofchess.shared.user.Player
 import upickle.default.{ReadWriter, macroRW}
 
 final case class Lobby(

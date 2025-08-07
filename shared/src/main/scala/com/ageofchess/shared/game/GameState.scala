@@ -2,6 +2,7 @@ package com.ageofchess.shared.game
 
 import com.ageofchess.shared.piece._
 import com.ageofchess.shared.board._
+import com.ageofchess.shared.user.Player
 
 case class GameState(
   gameId: String,

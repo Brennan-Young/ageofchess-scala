@@ -2,10 +2,10 @@ package com.ageofchess.client.gamestate
 
 import com.raquo.laminar.api.L._
 import com.ageofchess.client.api.Sockets.GameSocket
-import com.ageofchess.shared.game._
 import scala.concurrent.duration._
 import com.ageofchess.shared.piece._
 import com.ageofchess.shared.board._
+import com.ageofchess.shared.user.Player
 
 class SpectatorGameView(
   val gameId: String,

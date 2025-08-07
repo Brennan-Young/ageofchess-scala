@@ -3,7 +3,8 @@ package com.ageofchess.client.api
 import org.scalajs.dom
 import com.ageofchess.shared.piece._
 import upickle.default._
-import com.ageofchess.client.gamestate.UserRole
+import com.ageofchess.shared.user.UserRole
+import com.ageofchess.shared.user.UserId
 
 object Sockets {
   // val ws = if (dom.window.location.protocol == "https:") {
@@ -27,14 +28,15 @@ object Sockets {
   // }
 
   class GameSocket(
+    userId: UserId,
     gameId: String,
     role: UserRole
   ) {
 
     val ws = if (dom.window.location.protocol == "https:") {
-      s"wss://${dom.window.location.host}/game/${gameId}?as=${role.toString}"
+      s"wss://${dom.window.location.host}/game/${gameId}?user=${userId}&as=${role.toString}"
     } else {
-      s"ws://${dom.window.location.host}/game/${gameId}?as=${role.toString}"
+      s"ws://${dom.window.location.host}/game/${gameId}?user=${userId}&as=${role.toString}"
     }
 
     val socket = new dom.WebSocket(ws)
