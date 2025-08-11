@@ -81,18 +81,4 @@ object Main {
 
     maybeGameId.map(id => (id, role))
   }
-
-  // TODO: Move out and clean up logic
-  def parseGameRoute(path: String): Option[(String, UserRole)] = {
-    val splitString = path.split('?')
-
-    splitString match {
-      case Array(path, role, _*) => role match {
-        case "player" => Some(path, PlayerRole)
-        case "spectator" => Some(path, SpectatorRole)
-        case _ => None
-      }
-      case _ => None
-    }
-  }
 }

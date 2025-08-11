@@ -2,6 +2,7 @@ package com.ageofchess.shared
 
 import upickle.default._
 import com.ageofchess.shared.piece.Color
+import scala.util.Random
 
 package object user {
   case class UserId(id: String)
@@ -10,7 +11,12 @@ package object user {
     implicit val rw: ReadWriter[UserId] = macroRW
 
     def generate(): UserId = {
+      // TODO: java.util.UUID is not valid ScalaJS.  Perhaps generate on the server and have the client query for it,
+      // or generate in some other way?
+
       UserId(java.util.UUID.randomUUID().toString)
+
+      // UserId(Random.nextString(12))
     }
   }
 

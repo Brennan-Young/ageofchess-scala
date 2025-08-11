@@ -34,9 +34,9 @@ object Sockets {
   ) {
 
     val ws = if (dom.window.location.protocol == "https:") {
-      s"wss://${dom.window.location.host}/game/${gameId}?user=${userId}&as=${role.toString}"
+      s"wss://${dom.window.location.host}/game/${gameId}?user=${userId.id}&as=${role.toString}"
     } else {
-      s"ws://${dom.window.location.host}/game/${gameId}?user=${userId}&as=${role.toString}"
+      s"ws://${dom.window.location.host}/game/${gameId}?user=${userId.id}&as=${role.toString}"
     }
 
     val socket = new dom.WebSocket(ws)

@@ -19,15 +19,15 @@ object Messages {
     implicit val rw: ReadWriter[InitializeBoard] = macroRW
   }
 
-  case class AssignPlayers(player: Player, opponent: Player) extends GameMessage
-  object AssignPlayers {
-    implicit val rw: ReadWriter[AssignPlayers] = macroRW
-  }
+  // case class AssignPlayers(player: Player, opponent: Player) extends GameMessage
+  // object AssignPlayers {
+  //   implicit val rw: ReadWriter[AssignPlayers] = macroRW
+  // }
 
   // TODO: Use this with a playerId-based GamePage
-  case class AssignPlayers2(white: Player, black: Player) extends GameMessage
-  object AssignPlayers2 {
-    implicit val rw: ReadWriter[AssignPlayers2] = macroRW
+  case class AssignPlayers(white: Player, black: Player) extends GameMessage
+  object AssignPlayers {
+    implicit val rw: ReadWriter[AssignPlayers] = macroRW
   }
 
   case class UpdatePieces(nextActivePlayer: Player, pieces: Map[Location, Piece]) extends GameMessage

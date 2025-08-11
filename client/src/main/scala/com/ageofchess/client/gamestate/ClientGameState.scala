@@ -187,7 +187,7 @@ class GameConnection(
       //   val gameMetadata = GameMetadata(Some(player), Some(opponent), Some(startingPlayer))
       //   gameMetadataVar.set(gameMetadata)
       // }
-      case AssignPlayers2(white, black) => {
+      case AssignPlayers(white, black) => {
         println("Assigning players")
         val gameMetadata = GameMetadata(white, black)
         gameMetadataVar.set(Some(gameMetadata))

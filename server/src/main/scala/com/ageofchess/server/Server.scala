@@ -14,6 +14,10 @@ import java.time.Duration
 import cask.endpoints.WsChannelActor
 import com.ageofchess.shared.user.Player
 import com.ageofchess.shared.user.UserId
+import com.ageofchess.shared.game.ActiveGame
+import com.ageofchess.shared.user.Spectator
+import scala.collection.immutable.Stream.cons
+import com.ageofchess.server
 
 object Server extends MainRoutes {
   @cask.staticFiles("/js/")
@@ -61,24 +65,78 @@ object Server extends MainRoutes {
   val playerChannels = collection.mutable.Map.empty[String, cask.WsChannelActor]
   val userChannels = collection.mutable.Map.empty[UserId, WsChannelActor]
 
+  // @cask.websocket("/game/:gameId")
+  // def gameSocket(gameId: String, user: String, as: String): cask.WebsocketResult = {
+  //   cask.WsHandler { channel =>
+  //     as match {
+  //       case "player" => {
+  //         games.get(gameId) match {
+  //           case Some(game) => // TODO: send some sort of "game full" message
+  //           case None => {
+  //             pendingGames.get(gameId) match {
+  //               case Some(game) => matchGame(game, channel)
+  //               case None => createGame(gameId, channel)
+  //             }
+  //           }
+  //         }
+  //       }
+  //       case "spectator" => println("user joining as spectator")
+  //     }
+    
+  //     cask.WsActor {
+  //       case cask.Ws.Text(msg) => {
+  //         games.get(gameId).foreach(game => handleMessage(gameId, game, msg))
+  //       }
+  //     }
+  //   }
+  // }
+
   @cask.websocket("/game/:gameId")
   def gameSocket(gameId: String, user: String, as: String): cask.WebsocketResult = {
     cask.WsHandler { channel =>
-      as match {
-        case "player" => {
-          games.get(gameId) match {
-            case Some(game) => // TODO: send some sort of "game full" message
-            case None => {
-              pendingGames.get(gameId) match {
-                case Some(game) => matchGame(game, channel)
-                case None => createGame(gameId, channel)
+      val userId = UserId(user)
+      userChannels.update(userId, channel)
+      
+      games.get(gameId) match {
+        case None => {
+          pending.get(gameId) match {
+            case None => createLobby(userId, gameId, as)
+            case Some(pendingLobby) => {
+              as match {
+                case "player" => {
+                  val updatedLobby = pendingLobby.copy(players = pendingLobby.players :+ userId)
+                  updatedLobby.players match {
+                    case List(p1, p2, _*) => {
+                      val game = constructActiveGame(gameId, p1, p2, updatedLobby.spectators)
+                      pending.remove(gameId)
+                      games.update(gameId, game)
+                    }
+                    case _ => {
+                      pending.update(gameId, updatedLobby)
+                    }
+                  }
+                }
+                case "spectator" => {
+                  val updatedLobby = pendingLobby.copy(spectators = pendingLobby.spectators :+ userId)
+                  pending.update(gameId, updatedLobby)
+                }
               }
             }
           }
         }
-        case "spectator" => println("user joining as spectator")
+        case Some(game) => {
+          as match {
+            case "spectator" => {
+              val updatedGame = game.copy(
+                spectators = game.spectators :+ Spectator(userId),
+              )
+
+              games.update(gameId, updatedGame)
+            }
+          }
+        }
       }
-    
+      
       cask.WsActor {
         case cask.Ws.Text(msg) => {
           games.get(gameId).foreach(game => handleMessage(gameId, game, msg))
@@ -94,14 +152,17 @@ object Server extends MainRoutes {
       case ConnectPlayer(p) => {
         // TODO: extract this out
         // TODO: Maybe don't bother with this ConnectPlayer thing. When the game is created in matchGame, automatically broadcast out the information
-        playerChannels.get(game.gameState.white.userId.id).foreach { connection =>
-          val assignments = AssignPlayers(game.gameState.white, game.gameState.black)
-          connection.send(cask.Ws.Text(write(assignments)))
-        }
-        playerChannels.get(game.gameState.black.userId.id).foreach { connection =>
-          val assignments = AssignPlayers(game.gameState.black, game.gameState.white)
-          connection.send(cask.Ws.Text(write(assignments)))  
-        }
+        // playerChannels.get(game.gameState.white.userId.id).foreach { connection =>
+        //   val assignments = AssignPlayers(game.gameState.white, game.gameState.black)
+        //   connection.send(cask.Ws.Text(write(assignments)))
+        // }
+        // playerChannels.get(game.gameState.black.userId.id).foreach { connection =>
+        //   val assignments = AssignPlayers(game.gameState.black, game.gameState.white)
+        //   connection.send(cask.Ws.Text(write(assignments)))  
+        // }
+
+        val message = AssignPlayers(game.gameState.white, game.gameState.black)
+        broadcastToUsers(game, write(message))
       }
       case AwaitingBoard(playerId) => {
         val serverMessage = InitializeBoard(
@@ -109,9 +170,11 @@ object Server extends MainRoutes {
           game.gameState.pieces.toMap,
           game.gameState.treasures.toSet
         )
-        playerChannels.get(playerId).foreach { connection =>
-          connection.send(cask.Ws.Text(write(serverMessage)))
-        }
+        // playerChannels.get(playerId).foreach { connection =>
+        //   connection.send(cask.Ws.Text(write(serverMessage)))
+        // }
+
+        broadcastToUsers(game, write(serverMessage))
       }
       case playerAction: PlayerActionMessage => {
         val nextGameState = game.gameState.validateAndGenerateNextState(playerAction.player, playerAction.toPlayerAction)
@@ -155,72 +218,71 @@ object Server extends MainRoutes {
     }
   }
 
-  def broadcastToPlayers(game: GameState, message: String) = {
-    playerChannels.get(game.white.userId.id).foreach { connection =>
-      connection.send(cask.Ws.Text(message))
-    }
+  // def broadcastToPlayers(game: GameState, message: String) = {
+  //   playerChannels.get(game.white.userId.id).foreach { connection =>
+  //     connection.send(cask.Ws.Text(message))
+  //   }
 
-    playerChannels.get(game.black.userId.id).foreach { connection =>
-      connection.send(cask.Ws.Text(message))  
-    }
-  }
+  //   playerChannels.get(game.black.userId.id).foreach { connection =>
+  //     connection.send(cask.Ws.Text(message))  
+  //   }
+  // }
 
-  def create(user: UserId, gameId: String, role: String, channel: WsChannelActor): Unit = {
+  def createLobby(user: UserId, gameId: String, role: String): Unit = {
     val pendingGame = role match {
       case "player" => Pending(gameId, List(user), List())
       case "spectator" => Pending(gameId, List(), List(user))
     }
 
     pending.update(gameId, pendingGame)
-    userChannels.update(user, channel)
   }
  
-  def createGame(gameId: String, channel: cask.WsChannelActor): Unit = {
-    val playerId = java.util.UUID.randomUUID().toString
-    val pending = PendingGame(gameId, playerId)
-    pendingGames.update(gameId, pending)
-    playerChannels.update(playerId, channel)
+  // def createGame(gameId: String, channel: cask.WsChannelActor): Unit = {
+  //   val playerId = java.util.UUID.randomUUID().toString
+  //   val pending = PendingGame(gameId, playerId)
+  //   pendingGames.update(gameId, pending)
+  //   playerChannels.update(playerId, channel)
 
-    println(s"Player connected : $playerId")
-  }
+  //   println(s"Player connected : $playerId")
+  // }
 
-  import scala.util.Random
-  def matchGame(pendingGame: PendingGame, channel: cask.WsChannelActor): Unit = {
-    val playerId = java.util.UUID.randomUUID().toString
-    val coin = Random.nextInt(2)
+  // import scala.util.Random
+  // def matchGame(pendingGame: PendingGame, channel: cask.WsChannelActor): Unit = {
+  //   val playerId = java.util.UUID.randomUUID().toString
+  //   val coin = Random.nextInt(2)
 
-    println(s"Second player connected: $playerId")
+  //   println(s"Second player connected: $playerId")
 
-    val (p1, p2) = if (coin == 1) (pendingGame.player1, playerId) else (playerId, pendingGame.player1)
-    val player1 = Player(UserId(p1), White)
-    val player2 = Player(UserId(p2), Black)
-    val board = BoardGenerator.generateBoard(20)
-    val pieces = mutable.Map(defaultPieces.toSeq: _*)
-    val gold = mutable.Map(player1 -> 100, player2 -> 100)
-    val treasures = mutable.Set(Location(0, 1))
+  //   val (p1, p2) = if (coin == 1) (pendingGame.player1, playerId) else (playerId, pendingGame.player1)
+  //   val player1 = Player(UserId(p1), White)
+  //   val player2 = Player(UserId(p2), Black)
+  //   val board = BoardGenerator.generateBoard(20)
+  //   val pieces = mutable.Map(defaultPieces.toSeq: _*)
+  //   val gold = mutable.Map(player1 -> 100, player2 -> 100)
+  //   val treasures = mutable.Set(Location(0, 1))
 
-    val gameState = GameState(
-      pendingGame.gameId,
-      player1,
-      player2,
-      board,
-      pieces.toMap,
-      gold.toMap,
-      treasures.toSet,
-      player1
-    )
+  //   val gameState = GameState(
+  //     pendingGame.gameId,
+  //     player1,
+  //     player2,
+  //     board,
+  //     pieces.toMap,
+  //     gold.toMap,
+  //     treasures.toSet,
+  //     player1
+  //   )
 
-    val activeGame = ActiveGame(
-      gameState,
-      Map(player1 -> PlayerClock(1.minute, Instant.now().toEpochMilli), player2 -> PlayerClock(1.minute, Instant.now().toEpochMilli)),
-      List(player1, player2),
-      List()
-    )
+  //   val activeGame = ActiveGame(
+  //     gameState,
+  //     Map(player1 -> PlayerClock(1.minute, Instant.now().toEpochMilli), player2 -> PlayerClock(1.minute, Instant.now().toEpochMilli)),
+  //     List(player1, player2),
+  //     List()
+  //   )
 
-    games.update(pendingGame.gameId, activeGame)
-    playerChannels.update(playerId, channel)
-    pendingGames.remove(pendingGame.gameId)
-  }
+  //   games.update(pendingGame.gameId, activeGame)
+  //   playerChannels.update(playerId, channel)
+  //   pendingGames.remove(pendingGame.gameId)
+  // }
   
   initialize()
 }
