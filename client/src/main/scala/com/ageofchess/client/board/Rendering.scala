@@ -1,36 +1,16 @@
 package com.ageofchess.client.board
 
 import com.raquo.laminar.api.L._
-import com.ageofchess.shared.Messages._
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.piece._
-import com.ageofchess.client.api.Sockets
 import com.ageofchess.client.gamestate.PlayerGameView
 import org.scalajs.dom
 import scala.util.Try
-import upickle.default._ // remove later
 import com.ageofchess.client.events.GameEvents._
-import scala.concurrent.duration._
 import com.ageofchess.client.board.Clock.clockDisplay
 
 class GameStateRenderer(val clientGame: PlayerGameView) {
-
-  val squareSizePx = 50
-
-  val squareSizeVar = Var(50)
-
-  def updateSize(): Unit = {
-    val windowWidth = dom.window.innerWidth
-    val size = (windowWidth / 25).toInt.min(60).max(30)
-    squareSizeVar.set(size)
-  }
-
-  // Attach to resize event
-  dom.window.onresize = _ => updateSize()
-  updateSize() // call initially
-
   val windowSize = Var((dom.window.innerWidth, dom.window.innerHeight))
-
   dom.window.onresize = _ => windowSize.set((dom.window.innerWidth, dom.window.innerHeight))
 
   def render(
@@ -55,7 +35,6 @@ class GameStateRenderer(val clientGame: PlayerGameView) {
         styleAttr <-- squareSizeSignal.map { size =>
           s"grid-template-columns: repeat(${numColumns}, ${size}px);"
         },
-        // styleAttr := s"grid-template-columns: repeat(${numColumns}, 50px);",
         board.zipWithIndex.map { case (row, rIdx) =>
           div(
             cls := "board-row",

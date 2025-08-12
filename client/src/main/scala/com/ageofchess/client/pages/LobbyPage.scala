@@ -2,7 +2,7 @@ package com.ageofchess.client.pages
 
 import com.raquo.laminar.api.L._
 import com.ageofchess.shared.Lobby
-import com.ageofchess.client.api.Sockets.GameSocket
+import com.ageofchess.client.api.Sockets.LobbySocket
 import com.ageofchess.shared.Messages._
 import org.scalajs.dom.MessageEvent
 import upickle.default.{read, write}
@@ -22,10 +22,9 @@ object LobbyPage {
       }
   }
 
-  def render(connection: GameSocket) = {
+  def render(connection: LobbySocket) = {
 
     connection.socket.addEventListener("message", updateLobbiesHandler)
-    connection.socket.send(write(FetchLobbies()))
 
     div(
       h1("Available Games"),
@@ -52,10 +51,10 @@ object LobbyPage {
 
     div(
       if (canJoinAsPlayer)
-        a(href := s"/game/$lobby.gameId}?as=player", "Join Game")
+        a(href := s"/game/${lobby.gameId}?as=player", "Join Game")
       else emptyNode,
       if (canJoinAsSpectator)
-        a(href := s"/game/$lobby.gameId}?as=spectator", "Spectate Game")
+        a(href := s"/game/${lobby.gameId}?as=spectator", "Spectate Game")
       else emptyNode
     )
   }

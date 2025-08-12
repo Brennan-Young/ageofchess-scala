@@ -20,6 +20,8 @@ import com.ageofchess.client.api.Sockets.GameSocket
 import com.ageofchess.shared.user.{UserRole, PlayerRole, SpectatorRole}
 import com.ageofchess.client.gamestate.GameConnection
 import com.ageofchess.shared.user.UserId
+import com.ageofchess.shared.Lobby
+import com.ageofchess.client.api.Sockets.LobbySocket
 
 object Main {
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
@@ -57,6 +59,9 @@ object Main {
         // val socket = new GameSocket(gameId)
         // val gameState = new PendingClientGame(gameId, socket)
         // new GamePage(gameId, gameState).render
+      }
+      case "/lobbies" => {
+        LobbyPage.render(new LobbySocket())
       }
       case _        => NotFoundPage.render
     }

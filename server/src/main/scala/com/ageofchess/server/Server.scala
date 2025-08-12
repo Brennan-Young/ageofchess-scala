@@ -18,6 +18,7 @@ import com.ageofchess.shared.game.ActiveGame
 import com.ageofchess.shared.user.Spectator
 import scala.collection.immutable.Stream.cons
 import com.ageofchess.server
+import com.ageofchess.shared.Lobby
 
 object Server extends MainRoutes {
   @cask.staticFiles("/js/")
@@ -44,6 +45,22 @@ object Server extends MainRoutes {
     )
   }
 
+  @cask.get("/lobbies")
+  def serveLobbyPage(): Response[String] = {
+    cask.Response(
+      """<!DOCTYPE html>
+        <html>
+        <head>
+          <title>Age of Chess - Lobbies</title>
+          <script type="module" src="/js/main.js"></script>
+        </head>
+        <body></body>
+      </html>""",
+      headers = Seq("Content-Type" -> "text/html")
+    )
+  }
+
+
   @cask.get("/game/:gameId")
   def serveGamePage(gameId: String, as: Option[String] = None, vscodeBrowserReqId: Option[String] = None): Response[String] = {
     cask.Response(
@@ -60,42 +77,32 @@ object Server extends MainRoutes {
   }
 
   val games = collection.mutable.Map.empty[String, ActiveGame]
-  val pendingGames = collection.mutable.Map.empty[String, PendingGame]
   val pending = collection.mutable.Map.empty[String, Pending]
-  val playerChannels = collection.mutable.Map.empty[String, cask.WsChannelActor]
   val userChannels = collection.mutable.Map.empty[UserId, WsChannelActor]
+  val lobbySubscribers = collection.mutable.Set.empty[WsChannelActor]
+  var lobbies = List.empty[Lobby]
 
-  // @cask.websocket("/game/:gameId")
-  // def gameSocket(gameId: String, user: String, as: String): cask.WebsocketResult = {
-  //   cask.WsHandler { channel =>
-  //     as match {
-  //       case "player" => {
-  //         games.get(gameId) match {
-  //           case Some(game) => // TODO: send some sort of "game full" message
-  //           case None => {
-  //             pendingGames.get(gameId) match {
-  //               case Some(game) => matchGame(game, channel)
-  //               case None => createGame(gameId, channel)
-  //             }
-  //           }
-  //         }
-  //       }
-  //       case "spectator" => println("user joining as spectator")
-  //     }
-    
-  //     cask.WsActor {
-  //       case cask.Ws.Text(msg) => {
-  //         games.get(gameId).foreach(game => handleMessage(gameId, game, msg))
-  //       }
-  //     }
-  //   }
-  // }
+  @cask.websocket("/lobbies")
+  def lobbySocket(): cask.WebsocketResult = {
+    cask.WsHandler { channel =>
+
+      lobbySubscribers += channel
+      
+      cask.WsActor {
+        case cask.Ws.Close(_, _) => {
+          lobbySubscribers -= channel
+        }
+      }
+    }
+  }
 
   @cask.websocket("/game/:gameId")
   def gameSocket(gameId: String, user: String, as: String): cask.WebsocketResult = {
     cask.WsHandler { channel =>
       val userId = UserId(user)
       userChannels.update(userId, channel)
+
+      println(games.get(gameId), user, as)
       
       games.get(gameId) match {
         case None => {
@@ -124,6 +131,7 @@ object Server extends MainRoutes {
             }
           }
         }
+        // case Some(game) if !game.allAssociatedClients.map(_.userId).contains(userId) => {
         case Some(game) => {
           as match {
             case "spectator" => {
@@ -135,7 +143,12 @@ object Server extends MainRoutes {
             }
           }
         }
+        // case Some(game) if game.allAssociatedClients.map(_.userId).contains(userId) => {
+        //   println("Client already connected" + userId)
+        // }
       }
+
+      updateLobbies()
       
       cask.WsActor {
         case cask.Ws.Text(msg) => {
@@ -150,31 +163,43 @@ object Server extends MainRoutes {
     val parsedMessage = read[ClientMessage](message)
     parsedMessage match {
       case ConnectPlayer(p) => {
-        // TODO: extract this out
-        // TODO: Maybe don't bother with this ConnectPlayer thing. When the game is created in matchGame, automatically broadcast out the information
-        // playerChannels.get(game.gameState.white.userId.id).foreach { connection =>
-        //   val assignments = AssignPlayers(game.gameState.white, game.gameState.black)
-        //   connection.send(cask.Ws.Text(write(assignments)))
-        // }
-        // playerChannels.get(game.gameState.black.userId.id).foreach { connection =>
-        //   val assignments = AssignPlayers(game.gameState.black, game.gameState.white)
-        //   connection.send(cask.Ws.Text(write(assignments)))  
-        // }
-
         val message = AssignPlayers(game.gameState.white, game.gameState.black)
         broadcastToUsers(game, write(message))
       }
-      case AwaitingBoard(playerId) => {
-        val serverMessage = InitializeBoard(
+      case AwaitingBoard(userId) => {
+        val initializedBoard = InitializeBoard(
           game.gameState.board,
           game.gameState.pieces.toMap,
-          game.gameState.treasures.toSet
+          game.gameState.treasures.toSet,
+          game.gameState.gold
         )
-        // playerChannels.get(playerId).foreach { connection =>
-        //   connection.send(cask.Ws.Text(write(serverMessage)))
-        // }
 
-        broadcastToUsers(game, write(serverMessage))
+        // TODO: Unintuitive to update clocks here and can cause issues with managing time
+        game.clocks.get(game.gameState.playerToMove).map { clock =>
+          val time = Instant.now().toEpochMilli()
+          val elapsed = time - clock.lastUpdate
+
+          val nextRemainder = clock.remaining - elapsed.millis
+          val nextClock = PlayerClock(nextRemainder, time)
+
+          game.clocks.map { case (player, clock) =>
+            player -> (if (player == game.gameState.playerToMove) nextClock else clock.copy(lastUpdate = time))
+          }
+        }
+          .foreach { nextClock =>
+            val updatedGame = game.copy(clocks = nextClock)
+            games.update(gameId, updatedGame)
+
+            val clockMessage = UpdatePlayerClocks(nextClock)
+
+            userChannels.get(userId).foreach { connection =>
+              connection.send(cask.Ws.Text(write(clockMessage)))
+            }
+          }
+
+        userChannels.get(userId).foreach { connection =>
+          connection.send(cask.Ws.Text(write(initializedBoard)))  
+        }
       }
       case playerAction: PlayerActionMessage => {
         val nextGameState = game.gameState.validateAndGenerateNextState(playerAction.player, playerAction.toPlayerAction)
@@ -218,16 +243,6 @@ object Server extends MainRoutes {
     }
   }
 
-  // def broadcastToPlayers(game: GameState, message: String) = {
-  //   playerChannels.get(game.white.userId.id).foreach { connection =>
-  //     connection.send(cask.Ws.Text(message))
-  //   }
-
-  //   playerChannels.get(game.black.userId.id).foreach { connection =>
-  //     connection.send(cask.Ws.Text(message))  
-  //   }
-  // }
-
   def createLobby(user: UserId, gameId: String, role: String): Unit = {
     val pendingGame = role match {
       case "player" => Pending(gameId, List(user), List())
@@ -236,53 +251,25 @@ object Server extends MainRoutes {
 
     pending.update(gameId, pendingGame)
   }
+
+  def updateLobbies(): Unit = {
+    val activeGames = games.map { case (gameId, game) =>
+      gameId -> Lobby(gameId, game.players.map(_.userId), true, true)  
+    }
+
+    val openLobbies = pending.map { case (gameId, game) =>
+      gameId -> Lobby(gameId, game.players, true, false)  
+    }
+
+    val l = activeGames ++ openLobbies
+    lobbies = l.map(_._2).toList
+
+    val message = UpdateLobbies(lobbies)
+
+    lobbySubscribers.foreach { channel =>
+      channel.send(cask.Ws.Text(write(message)))
+    }
+  }
  
-  // def createGame(gameId: String, channel: cask.WsChannelActor): Unit = {
-  //   val playerId = java.util.UUID.randomUUID().toString
-  //   val pending = PendingGame(gameId, playerId)
-  //   pendingGames.update(gameId, pending)
-  //   playerChannels.update(playerId, channel)
-
-  //   println(s"Player connected : $playerId")
-  // }
-
-  // import scala.util.Random
-  // def matchGame(pendingGame: PendingGame, channel: cask.WsChannelActor): Unit = {
-  //   val playerId = java.util.UUID.randomUUID().toString
-  //   val coin = Random.nextInt(2)
-
-  //   println(s"Second player connected: $playerId")
-
-  //   val (p1, p2) = if (coin == 1) (pendingGame.player1, playerId) else (playerId, pendingGame.player1)
-  //   val player1 = Player(UserId(p1), White)
-  //   val player2 = Player(UserId(p2), Black)
-  //   val board = BoardGenerator.generateBoard(20)
-  //   val pieces = mutable.Map(defaultPieces.toSeq: _*)
-  //   val gold = mutable.Map(player1 -> 100, player2 -> 100)
-  //   val treasures = mutable.Set(Location(0, 1))
-
-  //   val gameState = GameState(
-  //     pendingGame.gameId,
-  //     player1,
-  //     player2,
-  //     board,
-  //     pieces.toMap,
-  //     gold.toMap,
-  //     treasures.toSet,
-  //     player1
-  //   )
-
-  //   val activeGame = ActiveGame(
-  //     gameState,
-  //     Map(player1 -> PlayerClock(1.minute, Instant.now().toEpochMilli), player2 -> PlayerClock(1.minute, Instant.now().toEpochMilli)),
-  //     List(player1, player2),
-  //     List()
-  //   )
-
-  //   games.update(pendingGame.gameId, activeGame)
-  //   playerChannels.update(playerId, channel)
-  //   pendingGames.remove(pendingGame.gameId)
-  // }
-  
   initialize()
 }

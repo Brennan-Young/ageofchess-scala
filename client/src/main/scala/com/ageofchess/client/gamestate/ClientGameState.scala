@@ -25,21 +25,23 @@ class PlayerGameView(
   val treasuresVar: Var[Set[Location]] = Var(Set())
   val selectedPiece: Var[Option[(Option[Location], Piece)]] = Var(None)
 
-  val playerGoldVar: Var[Int] = Var(100)
-  val opponentGoldVar: Var[Int] = Var(100)
+  val playerGoldVar: Var[Int] = Var(0)
+  val opponentGoldVar: Var[Int] = Var(0)
 
-  val playerClockVar = Var(5.minutes)
-  val opponentClockVar = Var(5.minutes)
+  val playerClockVar = Var(0.minutes)
+  val opponentClockVar = Var(0.minutes)
 
   connection.socket.addEventListener("message", { event: MessageEvent =>
     val message: GameMessage = read[GameMessage](event.data.toString)
     println(s"Received game message: $message")
     message match {
-      case InitializeBoard(board, pieces, treasures) => {
+      case InitializeBoard(board, pieces, treasures, gold) => {
         println("Initializing board")
         boardVar.set(Some(board.squares))
         piecesVar.set(pieces)
         treasuresVar.set(treasures)
+        gold.get(player).foreach(playerGoldVar.set(_))
+        gold.get(opponent).foreach(opponentGoldVar.set(_))
       }
       case UpdatePlayerClocks(clocks) => {
         clocks.get(player).foreach { clock =>
@@ -50,7 +52,6 @@ class PlayerGameView(
         }
       }
       case UpdateBoardState(nextActivePlayer, pieces, gold, treasures) => {
-        val playerToMove = playerToMoveSignal
         piecesVar.set(pieces)
         treasuresVar.set(treasures)
         if (nextActivePlayer == player) {

@@ -6,6 +6,7 @@ import com.ageofchess.shared.user.Player
 import com.ageofchess.shared.game.PlayerClock
 import com.ageofchess.shared.piece.{Location, Piece}
 import com.ageofchess.shared.game._
+import com.ageofchess.shared.user.UserId
 
 object Messages {
 
@@ -14,7 +15,12 @@ object Messages {
     implicit val rw: ReadWriter[GameMessage] = macroRW
   }
 
-  case class InitializeBoard(board: Board, pieces: Map[Location, Piece], treasures: Set[Location]) extends GameMessage
+  case class InitializeBoard(
+    board: Board,
+    pieces: Map[Location, Piece],
+    treasures: Set[Location],
+    gold: Map[Player, Int]
+  ) extends GameMessage
   object InitializeBoard {
     implicit val rw: ReadWriter[InitializeBoard] = macroRW
   }
@@ -60,7 +66,7 @@ object Messages {
     implicit val rw: ReadWriter[ConnectPlayer] = macroRW
   }
 
-  case class AwaitingBoard(playerId: String) extends ClientMessage
+  case class AwaitingBoard(userId: UserId) extends ClientMessage
   object AwaitingBoard {
     implicit val rw: ReadWriter[AwaitingBoard] = macroRW
   }

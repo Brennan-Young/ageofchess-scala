@@ -1,11 +1,11 @@
 package com.ageofchess.shared
 
-import com.ageofchess.shared.user.Player
+import com.ageofchess.shared.user.UserId
 import upickle.default.{ReadWriter, macroRW}
 
 final case class Lobby(
   gameId: String,
-  players: List[Player],
+  players: List[UserId],
   spectatorsAllowed: Boolean = true,
   isGameStarted: Boolean
 )

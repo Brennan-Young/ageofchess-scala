@@ -8,6 +8,7 @@ import com.ageofchess.shared.Messages._
 import com.ageofchess.client.gamestate._
 import com.ageofchess.shared.user.UserId
 import com.ageofchess.shared.user.{PlayerRole, SpectatorRole}
+import com.ageofchess.client.board.SpectatorGameRenderer
 
 class GamePage(val gameId: String, val pendingGame: PendingClientGame) {
   def render(implicit ec: ExecutionContext): Div = {
@@ -18,7 +19,7 @@ class GamePage(val gameId: String, val pendingGame: PendingClientGame) {
           // pendingGame.connection.socket.close()
           val clientGame = new PlayerGameView(gameId, player, opponent, startingPlayer, pendingGame.connection)
           pendingGame.connection.socket.removeEventListener("message", pendingGame.assignPlayers)
-          clientGame.connection.socket.send(write(AwaitingBoard(player.userId.id)))
+          clientGame.connection.socket.send(write(AwaitingBoard(player.userId)))
           
           clientGame.boardVar.signal.map {
             case Some(board) => {
@@ -53,11 +54,12 @@ class GamePage2(val userId: UserId, val gameId: String, val gameConnection: Game
               val player = if (userId.id == white.userId.id) white else black
               val opponent = if (userId.id == white.userId.id) black else white
               val playerView = new PlayerGameView(gameId, player, opponent, white, gameConnection.connection)
-              playerView.connection.socket.send(write(AwaitingBoard(userId.id)))
+              playerView.connection.socket.send(write(AwaitingBoard(userId)))
               renderPlayerView(playerView)
             }
             case SpectatorRole => {
               val spectatorView = new SpectatorGameView(gameId, white, black, gameConnection.connection)
+              spectatorView.connection.socket.send(write(AwaitingBoard(userId)))
               renderSpectatorView(spectatorView)
             }
           }
@@ -91,8 +93,17 @@ class GamePage2(val userId: UserId, val gameId: String, val gameConnection: Game
     spectatorView: SpectatorGameView
   ) = {
 
-    Signal.fromValue(div("spectator view"))
+    spectatorView.boardVar.signal.map {
+      case Some(board) => {
+        div(
+          h1("Spectator board"),
+          new SpectatorGameRenderer(spectatorView).render(board)
+        )
+      }
+      case None => {
+        div("Loading board...")
+      }
+    }
   }
-
 }
 

@@ -52,6 +52,16 @@ object Sockets {
   //   new dom.WebSocket(ws)
   // }
 
+  class LobbySocket() {
+    val ws = if (dom.window.location.protocol == "https:") {
+      s"wss://${dom.window.location.host}/lobbies"
+    } else {
+      s"ws://${dom.window.location.host}/lobbies"
+    }
+
+    val socket = new dom.WebSocket(ws)
+  }
+
   def onOpenOrNow(socket: dom.WebSocket)(action: => Unit): Unit = {
     socket.onopen = _ => action
     if (socket.readyState == dom.WebSocket.OPEN) action
