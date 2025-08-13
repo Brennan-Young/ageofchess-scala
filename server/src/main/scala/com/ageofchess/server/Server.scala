@@ -89,6 +89,16 @@ object Server extends MainRoutes {
       lobbySubscribers += channel
       
       cask.WsActor {
+        case cask.Ws.Text(msg) => {
+          read[ClientMessage](msg) match {
+            case FetchLobbies() => {
+              updateLobbies()
+            }
+            case _ => {
+              println(s"Lobbies socket received non-FetchLobbies message: $msg")
+            }
+          }
+        }
         case cask.Ws.Close(_, _) => {
           lobbySubscribers -= channel
         }

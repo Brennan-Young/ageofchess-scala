@@ -6,6 +6,7 @@ import com.ageofchess.client.api.Sockets.LobbySocket
 import com.ageofchess.shared.Messages._
 import org.scalajs.dom.MessageEvent
 import upickle.default.{read, write}
+import com.ageofchess.client.api.Sockets.onOpenOrNow
 
 object LobbyPage {
   val lobbiesVar: Var[List[Lobby]] = Var(List())
@@ -25,6 +26,10 @@ object LobbyPage {
   def render(connection: LobbySocket) = {
 
     connection.socket.addEventListener("message", updateLobbiesHandler)
+
+    onOpenOrNow(connection.socket) {
+      connection.socket.send(write(FetchLobbies()))
+    }
 
     div(
       h1("Available Games"),
