@@ -56,6 +56,11 @@ object Messages {
     implicit val rw: ReadWriter[UpdateLobbies] = macroRW
   }
 
+  case class ResolveGame(result: GameResult) extends GameMessage
+  object ResolveGame {
+    implicit val rw: ReadWriter[ResolveGame] = macroRW
+  }
+
   sealed trait ClientMessage
   object ClientMessage {
     implicit val rw: ReadWriter[ClientMessage] = macroRW

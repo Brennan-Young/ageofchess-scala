@@ -113,8 +113,6 @@ object GameEvents {
             val action = PieceMove(currentPosition, clickedLocation)
             val nextState = gameState.validateAndGenerateNextState(clientGame.player, action)
 
-            println(s"State update: ${gameState}, ${nextState}")
-
             nextState.foreach { state =>
               updateGameStateVariables(clientGame, state)
               sendGameStateToServer(clientGame.connection, MovePiece(clientGame.player, currentPosition, clickedLocation))

@@ -15,6 +15,15 @@ case class GameState(
   playerToMove: Player
 ) {
 
+  // Currently regenerated on every new state, not the most efficient way of tracking this
+  lazy val containsWhiteKing = pieces.exists { case (_, piece) =>
+    piece == Piece(White, King)  
+  }
+
+  lazy val containsBlackKing = pieces.exists { case (_, piece) =>
+    piece == Piece(Black, King)  
+  }
+
   def nextPlayer: Player = {
     if (playerToMove == white) black else white
   }

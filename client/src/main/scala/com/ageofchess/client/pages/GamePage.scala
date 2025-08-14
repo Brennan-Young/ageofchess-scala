@@ -10,36 +10,11 @@ import com.ageofchess.shared.user.UserId
 import com.ageofchess.shared.user.{PlayerRole, SpectatorRole}
 import com.ageofchess.client.board.SpectatorGameRenderer
 
-class GamePage(val gameId: String, val pendingGame: PendingClientGame) {
+class GamePage(val userId: UserId, val gameId: String, val gameConnection: GameConnection) {
   def render(implicit ec: ExecutionContext): Div = {
-    div(
-      h1("Game Board"),
-      child <-- pendingGame.initializedPlayersSignal.signal.flatMap {
-        case Some((player, opponent, startingPlayer)) => {
-          // pendingGame.connection.socket.close()
-          val clientGame = new PlayerGameView(gameId, player, opponent, startingPlayer, pendingGame.connection)
-          pendingGame.connection.socket.removeEventListener("message", pendingGame.assignPlayers)
-          clientGame.connection.socket.send(write(AwaitingBoard(player.userId)))
-          
-          clientGame.boardVar.signal.map {
-            case Some(board) => {
-              div(
-                h1(s"You are playing as ${player.color.toString}"),
-                new GameStateRenderer(clientGame).render(board)
-              )
-            }
-            case _ => div("Loading")
-          }
-        }
-        case _ => Signal.fromValue(div("Loading"))
-      },
-      a(href := "/", "Back to Home")
-    )
-  }
-}
+    val handler = gameConnection.assignPlayers
+    gameConnection.connection.socket.addEventListener("message", handler)
 
-class GamePage2(val userId: UserId, val gameId: String, val gameConnection: GameConnection) {
-  def render(implicit ec: ExecutionContext): Div = {
     div(
       h1("Game Board"),
       child <-- gameConnection.gameMetadataVar.signal.flatMap {
@@ -47,7 +22,7 @@ class GamePage2(val userId: UserId, val gameId: String, val gameConnection: Game
           val white = metadata.white
           val black = metadata.black
 
-          gameConnection.connection.socket.removeEventListener("message", gameConnection.assignPlayers)
+          gameConnection.connection.socket.removeEventListener("message", handler)
 
           gameConnection.role match {
             case PlayerRole => {

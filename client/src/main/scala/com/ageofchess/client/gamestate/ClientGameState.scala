@@ -31,6 +31,8 @@ class PlayerGameView(
   val playerClockVar = Var(0.minutes)
   val opponentClockVar = Var(0.minutes)
 
+  val gameResultVar: Var[GameResult] = Var(Unresolved)
+
   connection.socket.addEventListener("message", { event: MessageEvent =>
     val message: GameMessage = read[GameMessage](event.data.toString)
     println(s"Received game message: $message")
@@ -63,6 +65,9 @@ class PlayerGameView(
         gold.get(opponent).foreach { updatedGold =>
           opponentGoldVar.set(updatedGold)
         }
+      }
+      case ResolveGame(result) => {
+        gameResultVar.set(result)
       }
       case _ =>
     }
@@ -120,54 +125,8 @@ class PlayerGameView(
         playerToMove
       )
   }
-}
 
-class PendingClientGame(
-  val gameId: String,
-  val connection: GameSocket
-) {
-  val playerVar: Var[Option[Player]] = Var(None)
-  val opponentVar: Var[Option[Player]] = Var(None)
-  val startingPlayerVar: Var[Option[Player]] = Var(None)
-
-  val initializedPlayersSignal = Signal.combine(
-    playerVar.signal,
-    opponentVar.signal,
-    startingPlayerVar.signal
-  ).map {
-    case (Some(player), Some(opponent), Some(startingPlayer)) => {
-      Some((player, opponent, startingPlayer))
-    }
-    case _ => {
-      None
-    }
-  }
-
-  println(connection.socket.readyState)
-
-  // TODO: This is not guaranteed to be closed by the time this class is instantiated.  Use something other than onopen
-  connection.socket.onopen = _ => {
-    println(connection.socket.readyState)
-    println("sending connection message")
-    connection.socket.send(write(ConnectPlayer("placeholder")))
-  }
-
-  val assignPlayers: MessageEvent => Unit = event => {
-    val message: GameMessage = read[GameMessage](event.data.toString)
-    println(s"Received pending game message: $message")
-    message match {
-      case AssignPlayers(player, opponent) => {
-        println("Assigning players")
-        playerVar.set(Some(player))
-        opponentVar.set(Some(opponent))
-        val startingPlayer = if (player.color == White) player else opponent
-        startingPlayerVar.set(Some(startingPlayer))
-      }
-      case _ =>
-    }
-  }
-
-  connection.socket.addEventListener("message", assignPlayers)
+  val isGameResolvedSignal = gameResultVar.signal.map(_ != Unresolved)
 }
 
 class GameConnection(
@@ -178,16 +137,13 @@ class GameConnection(
   val gameMetadataVar: Var[Option[GameMetadata]] = Var(None)
 ) {
 
-  val assignPlayers: MessageEvent => Unit = event => {
+  // Needs to be explicitly typed as js.Function1[MessageEvent, Unit] instead of simply MessageEvent => Unit
+  // or else removeEventListener seems not to work
+  // https://stackoverflow.com/a/42749012
+  val assignPlayers: scala.scalajs.js.Function1[MessageEvent, Unit] = event => {
     val message: GameMessage = read[GameMessage](event.data.toString)
     println(s"Received pending game message: $message")
     message match {
-      // case AssignPlayers(player, opponent) => {
-      //   println("Assigning players")
-      //   val startingPlayer = if (player.color == White) player else opponent
-      //   val gameMetadata = GameMetadata(Some(player), Some(opponent), Some(startingPlayer))
-      //   gameMetadataVar.set(gameMetadata)
-      // }
       case AssignPlayers(white, black) => {
         println("Assigning players")
         val gameMetadata = GameMetadata(white, black)
@@ -202,7 +158,6 @@ class GameConnection(
     connection.socket.send(write(ConnectPlayer("placeholder")))
   }
 
-  connection.socket.addEventListener("message", assignPlayers)
 }
 
 case class GameMetadata(

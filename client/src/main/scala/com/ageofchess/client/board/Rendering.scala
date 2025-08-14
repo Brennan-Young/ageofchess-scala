@@ -8,6 +8,7 @@ import org.scalajs.dom
 import scala.util.Try
 import com.ageofchess.client.events.GameEvents._
 import com.ageofchess.client.board.Clock.clockDisplay
+import com.ageofchess.shared.game._
 
 class GameStateRenderer(val clientGame: PlayerGameView) {
   val windowSize = Var((dom.window.innerWidth, dom.window.innerHeight))
@@ -80,13 +81,14 @@ class GameStateRenderer(val clientGame: PlayerGameView) {
           cls := "player-gold",
           child.text <-- clientGame.playerGoldSignal.map(gold => s"Your Gold: ${gold}")
         ),
-        clockDisplay(clientGame.playerClockVar, clientGame.isPlayerTurnSignal),
+        clockDisplay(clientGame.playerClockVar, clientGame.isPlayerTurnSignal, clientGame.isGameResolvedSignal),
         div(
           cls := "opponent-gold",
           child.text <-- clientGame.opponentGoldVar.signal.map(gold => s"Opponent's Gold: ${gold}")
         ),
-        clockDisplay(clientGame.opponentClockVar, clientGame.isPlayerTurnSignal.map(!_))
-      )
+        clockDisplay(clientGame.opponentClockVar, clientGame.isPlayerTurnSignal.map(!_), clientGame.isGameResolvedSignal)
+      ),
+      renderGameResult
     )
   }
 
@@ -179,6 +181,25 @@ class GameStateRenderer(val clientGame: PlayerGameView) {
         } else {
           emptyNode
         }
+      }
+    )
+  }
+
+  def renderGameResult: HtmlElement = {
+    div(
+      cls := "game-over-overlay",
+      cls.toggle("visible") <-- clientGame.isGameResolvedSignal,
+      onClick.preventDefault --> (_ => ()),
+      child <-- clientGame.gameResultVar.signal.map {
+        case GameWon(winner, reason) =>
+          div(
+            cls := "game-over-modal",
+            h2("Game Over"),
+            p(s"Winner: ${winner.userId.id}"),
+            p(s"Reason: ${reason.toString}")
+          )
+        case _ =>
+          emptyNode
       }
     )
   }

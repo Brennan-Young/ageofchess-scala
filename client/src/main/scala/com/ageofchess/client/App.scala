@@ -15,7 +15,6 @@ import ujson.{read => ujsonread}
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 import com.ageofchess.client.pages._
-import com.ageofchess.client.gamestate.PendingClientGame
 import com.ageofchess.client.api.Sockets.GameSocket
 import com.ageofchess.shared.user.{UserRole, PlayerRole, SpectatorRole}
 import com.ageofchess.client.gamestate.GameConnection
@@ -50,15 +49,10 @@ object Main {
               role
             )
 
-            new GamePage2(userId, gameId, connection).render
+            new GamePage(userId, gameId, connection).render
 
           case None => NotFoundPage.render
         }
-
-        // val gameId = path.stripPrefix("/game/")
-        // val socket = new GameSocket(gameId)
-        // val gameState = new PendingClientGame(gameId, socket)
-        // new GamePage(gameId, gameState).render
       }
       case "/lobbies" => {
         LobbyPage.render(new LobbySocket())

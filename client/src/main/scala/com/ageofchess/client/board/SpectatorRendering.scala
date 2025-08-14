@@ -6,6 +6,7 @@ import com.raquo.laminar.api.L._
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.piece._
 import com.ageofchess.client.board.Clock.clockDisplay
+import com.ageofchess.shared.game._
 
 class SpectatorGameRenderer(val spectatorView: SpectatorGameView) {
   val windowSize = Var((dom.window.innerWidth, dom.window.innerHeight))
@@ -57,13 +58,14 @@ class SpectatorGameRenderer(val spectatorView: SpectatorGameView) {
           cls := "white-gold",
           child.text <-- spectatorView.whiteGoldVar.signal.map(gold => s"White Gold: ${gold}")
         ),
-        clockDisplay(spectatorView.whiteClockVar, spectatorView.isWhiteToMove),
+        clockDisplay(spectatorView.whiteClockVar, spectatorView.isWhiteToMove, spectatorView.isGameResolvedSignal),
         div(
           cls := "black-gold",
           child.text <-- spectatorView.blackGoldVar.signal.map(gold => s"Black Gold: ${gold}")
         ),
-        clockDisplay(spectatorView.blackClockVar, spectatorView.isBlackToMove)
-      )
+        clockDisplay(spectatorView.blackClockVar, spectatorView.isBlackToMove, spectatorView.isGameResolvedSignal)
+      ),
+      renderGameResult
     )
   }
 
@@ -102,4 +104,23 @@ class SpectatorGameRenderer(val spectatorView: SpectatorGameView) {
       }
     )
   }
+
+  def renderGameResult: HtmlElement = {
+    div(
+      cls := "game-over-overlay",
+      cls.toggle("visible") <-- spectatorView.isGameResolvedSignal,
+      onClick.preventDefault --> (_ => ()),
+      child <-- spectatorView.gameResultVar.signal.map {
+        case GameWon(winner, reason) =>
+          div(
+            cls := "game-over-modal",
+            h2("Game Over"),
+            p(s"Winner: ${winner.userId.id}"),
+            p(s"Reason: ${reason.toString}")
+          )
+        case _ =>
+          emptyNode
+      }
+    )
+  }  
 }

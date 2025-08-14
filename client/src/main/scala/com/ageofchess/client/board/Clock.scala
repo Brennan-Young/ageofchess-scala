@@ -6,7 +6,8 @@ import scala.concurrent.duration._
 object Clock {
   def clockDisplay(
     clockVar: Var[FiniteDuration],
-    isActiveClockSignal: Signal[Boolean]
+    isActiveClockSignal: Signal[Boolean],
+    isGameResolvedSignal: Signal[Boolean]
   ): Div = {
 
     div(
@@ -15,9 +16,9 @@ object Clock {
       onMountCallback { ctx =>
         EventStream
           .periodic(1000)
-          .withCurrentValueOf(isActiveClockSignal)
-          .foreach { case (_, isActiveClock) =>
-            if (isActiveClock) clockVar.update(d => if (d > Duration.Zero) d - 1.second else d)
+          .withCurrentValueOf(isActiveClockSignal, isGameResolvedSignal)
+          .foreach { case (_, isActiveClock, isGameResolved) =>
+            if (isActiveClock && !isGameResolved) clockVar.update(d => if (d > Duration.Zero) d - 1.second else d)
           }(ctx.owner)
       },
       child.text <-- clockVar.signal.map { duration =>

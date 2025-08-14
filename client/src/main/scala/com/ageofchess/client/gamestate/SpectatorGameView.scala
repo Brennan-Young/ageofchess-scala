@@ -9,6 +9,7 @@ import com.ageofchess.shared.user.Player
 import org.scalajs.dom.MessageEvent
 import upickle.default.read
 import com.ageofchess.shared.Messages._
+import com.ageofchess.shared.game._
 
 class SpectatorGameView(
   val gameId: String,
@@ -27,10 +28,14 @@ class SpectatorGameView(
   val whiteClockVar = Var(0.minutes)
   val blackClockVar = Var(0.minutes)
 
+  val gameResultVar: Var[GameResult] = Var(Unresolved)
+
   val playerToMoveVar = Var(white)
 
   val isWhiteToMove = playerToMoveVar.signal.map(_ == white)
   val isBlackToMove = playerToMoveVar.signal.map(_ == black)
+
+  val isGameResolvedSignal = gameResultVar.signal.map(_ != Unresolved)
 
   connection.socket.addEventListener("message", { event: MessageEvent => 
     val message = read[GameMessage](event.data.toString)
@@ -53,6 +58,9 @@ class SpectatorGameView(
         gold.get(white).foreach(whiteGoldVar.set(_))
         gold.get(black).foreach(blackGoldVar.set(_))
         playerToMoveVar.set(nextActivePlayer)
+      }
+      case ResolveGame(result) => {
+        gameResultVar.set(result)
       }
       case _ =>
     }

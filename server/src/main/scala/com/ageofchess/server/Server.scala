@@ -2,22 +2,14 @@ package com.ageofchess.server
 
 import cask.{MainRoutes, Response}
 import upickle.default._
-import com.ageofchess.shared.board._
-import com.ageofchess.shared.piece._
 import com.ageofchess.shared.game._
 import com.ageofchess.shared.Messages._
-import collection.mutable
-import com.ageofchess.shared.board.BoardGenerator
 import scala.concurrent.duration._
 import java.time.Instant
-import java.time.Duration
 import cask.endpoints.WsChannelActor
-import com.ageofchess.shared.user.Player
 import com.ageofchess.shared.user.UserId
 import com.ageofchess.shared.game.ActiveGame
 import com.ageofchess.shared.user.Spectator
-import scala.collection.immutable.Stream.cons
-import com.ageofchess.server
 import com.ageofchess.shared.Lobby
 
 object Server extends MainRoutes {
@@ -31,7 +23,7 @@ object Server extends MainRoutes {
   def serveCss() = "client/src/main/resources/public"
 
   @cask.get("/")
-  def serveHomePage(vscodeBrowserReqId: Option[String] = None): Response[String] = {
+  def serveHomePage(): Response[String] = {
     cask.Response(
       """<!DOCTYPE html>
         <html>
@@ -60,14 +52,27 @@ object Server extends MainRoutes {
     )
   }
 
-
   @cask.get("/game/:gameId")
-  def serveGamePage(gameId: String, as: Option[String] = None, vscodeBrowserReqId: Option[String] = None): Response[String] = {
+  def serveGamePage(gameId: String, as: Option[String] = None): Response[String] = {
     cask.Response(
       """<!DOCTYPE html>
         <html>
         <head>
           <title>Age of Chess - Game</title>
+          <script type="module" src="/js/main.js"></script>
+        </head>
+        <body></body>
+      </html>""",
+      headers = Seq("Content-Type" -> "text/html")
+    )
+  }
+
+  override def handleNotFound() = {
+    cask.Response(
+      """<!DOCTYPE html>
+        <html>
+        <head>
+          <title>Age of Chess - 404</title>
           <script type="module" src="/js/main.js"></script>
         </head>
         <body></body>
@@ -137,6 +142,7 @@ object Server extends MainRoutes {
                   val updatedLobby = pendingLobby.copy(spectators = pendingLobby.spectators :+ userId)
                   pending.update(gameId, updatedLobby)
                 }
+                case _ =>
               }
             }
           }
@@ -151,6 +157,8 @@ object Server extends MainRoutes {
 
               games.update(gameId, updatedGame)
             }
+            case "player" =>
+            case _ =>
           }
         }
         // case Some(game) if game.allAssociatedClients.map(_.userId).contains(userId) => {
@@ -232,6 +240,14 @@ object Server extends MainRoutes {
         } {
 
           val nextGame = game.copy(gameState = state, clocks = clock)
+
+          if (!state.containsWhiteKing) {
+            val result = GameWon(state.black, KingCapture)
+            broadcastToUsers(nextGame, write(ResolveGame(result)))
+          } else if (!state.containsBlackKing) {
+            val result = GameWon(state.white, KingCapture)
+            broadcastToUsers(nextGame, write(ResolveGame(result)))
+          }
 
           games.update(gameId, nextGame)
           val serverMessage = UpdateBoardState(state.playerToMove, state.pieces, state.gold, state.treasures)
