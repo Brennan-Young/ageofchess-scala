@@ -1,6 +1,7 @@
 package com.ageofchess.client.events
 
 import com.ageofchess.client.gamestate.PlayerGameView
+import com.ageofchess.client.board.{AnimatingMove, MoveAnimation}
 import com.raquo.laminar.api.L._
 import org.scalajs.dom
 import com.ageofchess.shared.piece._
@@ -52,7 +53,7 @@ object GameEvents {
     Observer[(Location, GameState, Option[(Option[Location], Piece)], Int, Boolean)](onNext = {
       case (draggedToLocation, gameState, selectedPiece, playerGold, isValidMove) =>
         val playerAction: Option[PlayerAction] = selectedPiece match {
-          case Some((Some(draggedFromLocation), piece)) if isValidMove => Some(PieceMove(draggedFromLocation, draggedToLocation))
+          case Some((Some(draggedFromLocation), piece)) if isValidMove => Some(PieceMove(piece, draggedFromLocation, draggedToLocation))
           case Some((None, piece)) if isValidMove && playerGold >= piece.pieceType.value => {
             println("placing piece")
             Some(PiecePlacement(piece, draggedToLocation))
@@ -68,12 +69,19 @@ object GameEvents {
           }
         }
 
+        selectedPiece match {
+          case Some((Some(draggedFromLocation), piece)) => {
+            updateMoveAnimation(piece, draggedFromLocation, draggedToLocation, clientGame)
+          }
+          case _ =>
+        }
+
         for {
           action <- playerAction
           nextState <- gameState.validateAndGenerateNextState(clientGame.player, action)
         } {
           val message: ClientMessage = action match {
-            case PieceMove(f, t) => MovePiece(clientGame.player, f, t)
+            case PieceMove(piece, f, t) => MovePiece(clientGame.player, piece, f, t)
             case PiecePlacement(p, t) => PlacePiece(clientGame.player, p, t)
           }
 
@@ -108,14 +116,16 @@ object GameEvents {
     case (e, clickedLocation, gameState, isPlayerTurn, piece, validMoves, validCaptures, selectedPiece) =>
       if (isPlayerTurn) {
         selectedPiece match {
-          case Some((Some(currentPosition), _)) if (validMoves.contains(clickedLocation) || validCaptures.contains(clickedLocation)) => {
+          case Some((Some(currentPosition), clickedPiece)) if (validMoves.contains(clickedLocation) || validCaptures.contains(clickedLocation)) => {
             println(s"Moving piece from $currentPosition to $clickedLocation")
-            val action = PieceMove(currentPosition, clickedLocation)
+            val action = PieceMove(clickedPiece, currentPosition, clickedLocation)
             val nextState = gameState.validateAndGenerateNextState(clientGame.player, action)
+
+            updateMoveAnimation(clickedPiece, currentPosition, clickedLocation, clientGame)
 
             nextState.foreach { state =>
               updateGameStateVariables(clientGame, state)
-              sendGameStateToServer(clientGame.connection, MovePiece(clientGame.player, currentPosition, clickedLocation))
+              sendGameStateToServer(clientGame.connection, MovePiece(clientGame.player, clickedPiece, currentPosition, clickedLocation))
             }
           }
           case Some((Some(currentPosition), _)) if clickedLocation == currentPosition => {
@@ -142,10 +152,25 @@ object GameEvents {
       }
   })
 
+  def updateMoveAnimation(
+    piece: Piece,
+    from: Location,
+    to: Location,
+    clientGameState: PlayerGameView
+  ): Unit = {
+    val moveAnimation = AnimatingMove(piece, from, to)
+    clientGameState.moveAnimationVar.set(Some(moveAnimation))
+  }
+
   def updateGameStateVariables(
     clientGameState: PlayerGameView,
     nextGameState: GameState
   ): Unit = {
+    
+
+    val oldPieces = clientGameState.piecesVar.now()
+    val newMoves  = MoveAnimation.inferMoves(oldPieces, nextGameState.pieces)
+    clientGameState.animatingMovesVar.update(list => list ++ newMoves)
     clientGameState.piecesVar.update(pieces => nextGameState.pieces)
     clientGameState.playerGoldVar.update(gold => nextGameState.gold.get(clientGameState.player).getOrElse(0)) // TODO: Difficulty arises from player gold sometimes being stored as a Map versus sometimes two named variables.  May want to make this consistent
     clientGameState.treasuresVar.update(treasures => nextGameState.treasures)

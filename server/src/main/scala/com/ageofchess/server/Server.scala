@@ -220,7 +220,8 @@ object Server extends MainRoutes {
         }
       }
       case playerAction: PlayerActionMessage => {
-        val nextGameState = game.gameState.validateAndGenerateNextState(playerAction.player, playerAction.toPlayerAction)
+        val action = playerAction.toPlayerAction
+        val nextGameState = game.gameState.validateAndGenerateNextState(playerAction.player, action)
 
         val nextClocks = game.clocks.get(playerAction.player).map { clock =>
           val time = Instant.now().toEpochMilli()
@@ -250,7 +251,7 @@ object Server extends MainRoutes {
           }
 
           games.update(gameId, nextGame)
-          val serverMessage = UpdateBoardState(state.playerToMove, state.pieces, state.gold, state.treasures)
+          val serverMessage = UpdateBoardState(state.playerToMove, action, state.pieces, state.gold, state.treasures)
           broadcastToUsers(nextGame, write(serverMessage))
 
           val clockMessage = UpdatePlayerClocks(clock)

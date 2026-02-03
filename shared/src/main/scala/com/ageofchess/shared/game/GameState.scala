@@ -3,6 +3,7 @@ package com.ageofchess.shared.game
 import com.ageofchess.shared.piece._
 import com.ageofchess.shared.board._
 import com.ageofchess.shared.user.Player
+import upickle.default._
 
 case class GameState(
   gameId: String,
@@ -34,7 +35,7 @@ case class GameState(
   ): Boolean = {
 
     playerAction match {
-      case PieceMove(from, to) => player == playerToMove && isValidPieceMove(from, to)
+      case PieceMove(piece, from, to) => player == playerToMove && isValidPieceMove(from, to)
       case PiecePlacement(piece, to) => player == playerToMove && isValidPiecePlacement(player, piece, to)
     }
   }
@@ -72,7 +73,7 @@ case class GameState(
   ): Option[GameState] = {
 
     val updatedPieces = playerAction match {
-      case PieceMove(from, to) => {
+      case PieceMove(piece, from, to) => {
         pieces.get(from).map { piece => 
           pieces - from + (to -> piece)
         }
@@ -85,7 +86,7 @@ case class GameState(
     val updatedGold = gold.get(playerToMove).map { playerGold =>
       val goldFromTreasure = if (treasures.contains(playerAction.to)) TreasureValue else 0
       val goldFromPlacement = playerAction match {
-        case PieceMove(from, to) => 0
+        case PieceMove(piece, from, to) => 0
         case PiecePlacement(piece, to) => piece.pieceType.value
       }
 
@@ -111,9 +112,18 @@ case class GameState(
   }
 }
 
-trait PlayerAction {
+sealed trait PlayerAction {
   def to: Location
 }
 
-case class PieceMove(from: Location, to: Location) extends PlayerAction
+object PlayerAction {
+  implicit val rw: ReadWriter[PlayerAction] = macroRW
+}
+case class PieceMove(piece: Piece,from: Location, to: Location) extends PlayerAction
+object PieceMove {
+  implicit val rw: ReadWriter[PieceMove] = macroRW
+}
 case class PiecePlacement(piece: Piece, to: Location) extends PlayerAction
+object PiecePlacement {
+  implicit val rw: ReadWriter[PiecePlacement] = macroRW
+}

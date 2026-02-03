@@ -41,7 +41,7 @@ object Messages {
     implicit val rw: ReadWriter[UpdatePieces] = macroRW
   }
 
-  case class UpdateBoardState(nextActivePlayer: Player, pieces: Map[Location, Piece], gold: Map[Player, Int], treasures: Set[Location]) extends GameMessage
+  case class UpdateBoardState(nextActivePlayer: Player, playerAction: PlayerAction, pieces: Map[Location, Piece], gold: Map[Player, Int], treasures: Set[Location]) extends GameMessage
   object UpdateBoardState {
     implicit val rw: ReadWriter[UpdateBoardState] = macroRW
   }
@@ -89,9 +89,9 @@ object Messages {
     implicit val rw: ReadWriter[PlayerActionMessage] = macroRW
   }
 
-  case class MovePiece(player: Player, from: Location, to: Location) extends PlayerActionMessage { // TODO: playerIds, piece movement aren't strictly needed yet but perhaps have benefits?
+  case class MovePiece(player: Player, piece: Piece, from: Location, to: Location) extends PlayerActionMessage { // TODO: playerIds, piece movement aren't strictly needed yet but perhaps have benefits?
     override def toPlayerAction: PlayerAction = {
-      PieceMove(from, to)
+      PieceMove(piece, from, to)
     }
   }
 

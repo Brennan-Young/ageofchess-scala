@@ -32,30 +32,46 @@ class GameStateRenderer(val clientGame: PlayerGameView) {
     div(
       cls := "game-container",
       div(
-        cls := "board",
-        styleAttr <-- squareSizeSignal.map { size =>
-          s"grid-template-columns: repeat(${numColumns}, ${size}px);"
-        },
-        board.zipWithIndex.map { case (row, rIdx) =>
-          div(
-            cls := "board-row",
-            row.zipWithIndex.map { case (square, cIdx) =>
-              val squareColor = if ((rIdx + cIdx) % 2 == 0) Grass else Dirt
-              val renderableSquare = RenderableSquare(squareColor, square)
-              val location = Location(rIdx, cIdx)
-              renderSquare(
-                location,
-                renderableSquare,
-                clientGame.piecesVar.signal.map(pieces => pieces.get(location)),
-                clientGame.treasuresVar.signal.map(treasures => treasures.contains(location)),
-                clientGame.validMovesSignal.map(validMoves => validMoves.contains(location)),
-                squareSizeSignal
-              )
-            }
-          )
-        },
-        onClick.map { event => findSquare(event.target).map(event -> _) } --> mouseClickBus.writer,
-        mouseClickEvents(mouseClickBus, clientGame) --> mouseClickEffects(clientGame)
+        cls := "board-wrapper",
+        div(
+          cls := "board",
+          styleAttr <-- squareSizeSignal.map { size =>
+            s"grid-template-columns: repeat(${numColumns}, ${size}px);"
+          },
+          board.zipWithIndex.map { case (row, rIdx) =>
+            div(
+              cls := "board-row",
+              row.zipWithIndex.map { case (square, cIdx) =>
+                val squareColor = if ((rIdx + cIdx) % 2 == 0) Grass else Dirt
+                val renderableSquare = RenderableSquare(squareColor, square)
+                val location = Location(rIdx, cIdx)
+                // val effectivePieceSignal = Signal.combine(
+                //   clientGame.piecesVar.signal.map(pieces => pieces.get(location)),
+                //   clientGame.animatingMovesVar.signal
+                // ).map { case (pieceOpt, animating) =>
+                //   if (animating.exists(_.to == location)) None else pieceOpt
+                // }
+                val effectivePieceSignal = Signal.combine(
+                  clientGame.piecesVar.signal.map(pieces => pieces.get(location)),
+                  clientGame.moveAnimationVar.signal
+                ).map { case (pieceOpt, animating) =>
+                  if (animating.exists(_.to == location)) None else pieceOpt
+                }
+                renderSquare(
+                  location,
+                  renderableSquare,
+                  effectivePieceSignal,
+                  clientGame.treasuresVar.signal.map(treasures => treasures.contains(location)),
+                  clientGame.validMovesSignal.map(validMoves => validMoves.contains(location)),
+                  squareSizeSignal
+                )
+              }
+            )
+          },
+          onClick.map { event => findSquare(event.target).map(event -> _) } --> mouseClickBus.writer,
+          mouseClickEvents(mouseClickBus, clientGame) --> mouseClickEffects(clientGame)
+        ),
+        renderPieceOverlay(squareSizeSignal)
       ),
       div(
         cls := "right-sidebar",
@@ -89,6 +105,36 @@ class GameStateRenderer(val clientGame: PlayerGameView) {
         clockDisplay(clientGame.opponentClockVar, clientGame.isPlayerTurnSignal.map(!_), clientGame.isGameResolvedSignal)
       ),
       renderGameResult
+    )
+  }
+
+  def renderPieceOverlay(squareSizeSignal: Signal[Int]): HtmlElement = {
+    div(
+      cls := "board-piece-overlay",
+      child <-- clientGame.moveAnimationVar.signal.combineWith(squareSizeSignal).map {
+        case (moves, size) =>
+          div(
+            moves.map { move =>
+              renderAnimatingPiece(move, size)
+            }
+          )
+      }
+    )
+  }
+
+  def renderAnimatingPiece(move: AnimatingMove, size: Int): HtmlElement = {
+    val positionVar = Var(move.from)
+    img(
+      src := s"/assets/pieces/${move.piece.asset}",
+      cls := "piece board-piece-overlay-piece",
+      styleAttr <-- positionVar.signal.map { loc =>
+        s"left: ${loc.col * size}px; top: ${loc.row * size}px; width: ${size}px; height: ${size}px; transition: left 0.2s ease-out, top 0.2s ease-out;"
+      },
+      onMountCallback { _ =>
+        dom.window.setTimeout(() => positionVar.set(move.to), 0)
+        dom.window.setTimeout(() => clientGame.animatingMovesVar.update(_.filter(_ != move)), 250)
+        dom.window.setTimeout(() => clientGame.moveAnimationVar.update(_.filter(_ != move)), 250)
+      }
     )
   }
 

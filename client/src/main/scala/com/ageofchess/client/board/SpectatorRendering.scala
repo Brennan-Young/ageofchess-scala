@@ -30,27 +30,37 @@ class SpectatorGameRenderer(val spectatorView: SpectatorGameView) {
     div(
       cls := "game-container",
       div(
-        cls := "board",
-        styleAttr <-- squareSizeSignal.map { size =>
-          s"grid-template-columns: repeat(${numColumns}, ${size}px);"  
-        },
-        board.zipWithIndex.map { case (row, rIdx) =>
-          div(
-            cls := "board-row",
-            row.zipWithIndex.map { case (square, cIdx) =>
-              val squareColor = if ((rIdx + cIdx) % 2 == 0) Grass else Dirt
-              val renderableSquare = RenderableSquare(squareColor, square)
-              val location = Location(rIdx, cIdx)
-              renderSquare(
-                location,
-                renderableSquare,
-                spectatorView.piecesVar.signal.map(pieces => pieces.get(location)),
-                spectatorView.treasuresVar.signal.map(treasures => treasures.contains(location)),
-                squareSizeSignal
-              )
-            }
-          )  
-        }
+        cls := "board-wrapper",
+        div(
+          cls := "board",
+          styleAttr <-- squareSizeSignal.map { size =>
+            s"grid-template-columns: repeat(${numColumns}, ${size}px);"  
+          },
+          board.zipWithIndex.map { case (row, rIdx) =>
+            div(
+              cls := "board-row",
+              row.zipWithIndex.map { case (square, cIdx) =>
+                val squareColor = if ((rIdx + cIdx) % 2 == 0) Grass else Dirt
+                val renderableSquare = RenderableSquare(squareColor, square)
+                val location = Location(rIdx, cIdx)
+                val effectivePieceSignal = Signal.combine(
+                  spectatorView.piecesVar.signal.map(pieces => pieces.get(location)),
+                  spectatorView.animatingMovesVar.signal
+                ).map { case (pieceOpt, animating) =>
+                  if (animating.exists(_.to == location)) None else pieceOpt
+                }
+                renderSquare(
+                  location,
+                  renderableSquare,
+                  effectivePieceSignal,
+                  spectatorView.treasuresVar.signal.map(treasures => treasures.contains(location)),
+                  squareSizeSignal
+                )
+              }
+            )  
+          }
+        ),
+        renderPieceOverlay(squareSizeSignal)
       ),
       div(
         cls := "right-sidebar",
@@ -66,6 +76,35 @@ class SpectatorGameRenderer(val spectatorView: SpectatorGameView) {
         clockDisplay(spectatorView.blackClockVar, spectatorView.isBlackToMove, spectatorView.isGameResolvedSignal)
       ),
       renderGameResult
+    )
+  }
+
+  def renderPieceOverlay(squareSizeSignal: Signal[Int]): HtmlElement = {
+    div(
+      cls := "board-piece-overlay",
+      child <-- spectatorView.animatingMovesVar.signal.combineWith(squareSizeSignal).map {
+        case (moves, size) =>
+          div(
+            moves.map { move =>
+              renderAnimatingPiece(move, size)
+            }
+          )
+      }
+    )
+  }
+
+  def renderAnimatingPiece(move: AnimatingMove, size: Int): HtmlElement = {
+    val positionVar = Var(move.from)
+    img(
+      src := s"/assets/pieces/${move.piece.asset}",
+      cls := "piece board-piece-overlay-piece",
+      styleAttr <-- positionVar.signal.map { loc =>
+        s"left: ${loc.col * size}px; top: ${loc.row * size}px; width: ${size}px; height: ${size}px; transition: left 0.2s ease-out, top 0.2s ease-out;"
+      },
+      onMountCallback { _ =>
+        dom.window.setTimeout(() => positionVar.set(move.to), 0)
+        dom.window.setTimeout(() => spectatorView.animatingMovesVar.update(_.filter(_ != move)), 250)
+      }
     )
   }
 
