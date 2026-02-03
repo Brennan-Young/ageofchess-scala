@@ -45,7 +45,7 @@ class SpectatorGameRenderer(val spectatorView: SpectatorGameView) {
                 val location = Location(rIdx, cIdx)
                 val effectivePieceSignal = Signal.combine(
                   spectatorView.piecesVar.signal.map(pieces => pieces.get(location)),
-                  spectatorView.animatingMovesVar.signal
+                  spectatorView.moveAnimationVar.signal
                 ).map { case (pieceOpt, animating) =>
                   if (animating.exists(_.to == location)) None else pieceOpt
                 }
@@ -82,7 +82,7 @@ class SpectatorGameRenderer(val spectatorView: SpectatorGameView) {
   def renderPieceOverlay(squareSizeSignal: Signal[Int]): HtmlElement = {
     div(
       cls := "board-piece-overlay",
-      child <-- spectatorView.animatingMovesVar.signal.combineWith(squareSizeSignal).map {
+      child <-- spectatorView.moveAnimationVar.signal.combineWith(squareSizeSignal).map {
         case (moves, size) =>
           div(
             moves.map { move =>
@@ -103,7 +103,7 @@ class SpectatorGameRenderer(val spectatorView: SpectatorGameView) {
       },
       onMountCallback { _ =>
         dom.window.setTimeout(() => positionVar.set(move.to), 0)
-        dom.window.setTimeout(() => spectatorView.animatingMovesVar.update(_.filter(_ != move)), 250)
+        dom.window.setTimeout(() => spectatorView.moveAnimationVar.update(_.filter(_ != move)), 250)
       }
     )
   }

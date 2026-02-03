@@ -45,12 +45,6 @@ class GameStateRenderer(val clientGame: PlayerGameView) {
                 val squareColor = if ((rIdx + cIdx) % 2 == 0) Grass else Dirt
                 val renderableSquare = RenderableSquare(squareColor, square)
                 val location = Location(rIdx, cIdx)
-                // val effectivePieceSignal = Signal.combine(
-                //   clientGame.piecesVar.signal.map(pieces => pieces.get(location)),
-                //   clientGame.animatingMovesVar.signal
-                // ).map { case (pieceOpt, animating) =>
-                //   if (animating.exists(_.to == location)) None else pieceOpt
-                // }
                 val effectivePieceSignal = Signal.combine(
                   clientGame.piecesVar.signal.map(pieces => pieces.get(location)),
                   clientGame.moveAnimationVar.signal
@@ -132,7 +126,6 @@ class GameStateRenderer(val clientGame: PlayerGameView) {
       },
       onMountCallback { _ =>
         dom.window.setTimeout(() => positionVar.set(move.to), 0)
-        dom.window.setTimeout(() => clientGame.animatingMovesVar.update(_.filter(_ != move)), 250)
         dom.window.setTimeout(() => clientGame.moveAnimationVar.update(_.filter(_ != move)), 250)
       }
     )

@@ -1,7 +1,7 @@
 package com.ageofchess.client.events
 
 import com.ageofchess.client.gamestate.PlayerGameView
-import com.ageofchess.client.board.{AnimatingMove, MoveAnimation}
+import com.ageofchess.client.board.AnimatingMove
 import com.raquo.laminar.api.L._
 import org.scalajs.dom
 import com.ageofchess.shared.piece._
@@ -167,10 +167,6 @@ object GameEvents {
     nextGameState: GameState
   ): Unit = {
     
-
-    val oldPieces = clientGameState.piecesVar.now()
-    val newMoves  = MoveAnimation.inferMoves(oldPieces, nextGameState.pieces)
-    clientGameState.animatingMovesVar.update(list => list ++ newMoves)
     clientGameState.piecesVar.update(pieces => nextGameState.pieces)
     clientGameState.playerGoldVar.update(gold => nextGameState.gold.get(clientGameState.player).getOrElse(0)) // TODO: Difficulty arises from player gold sometimes being stored as a Map versus sometimes two named variables.  May want to make this consistent
     clientGameState.treasuresVar.update(treasures => nextGameState.treasures)

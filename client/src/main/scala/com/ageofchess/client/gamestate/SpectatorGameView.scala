@@ -10,7 +10,7 @@ import org.scalajs.dom.MessageEvent
 import upickle.default.read
 import com.ageofchess.shared.Messages._
 import com.ageofchess.shared.game._
-import com.ageofchess.client.board.{MoveAnimation, AnimatingMove}
+import com.ageofchess.client.board.AnimatingMove
 
 class SpectatorGameView(
   val gameId: String,
@@ -20,7 +20,7 @@ class SpectatorGameView(
 ) {
 
   val piecesVar: Var[Map[Location, Piece]] = Var(Map())
-  val animatingMovesVar: Var[List[AnimatingMove]] = Var(Nil)
+  val moveAnimationVar: Var[Option[AnimatingMove]] = Var(None)
   val boardVar: Var[Option[Vector[Vector[SquareType]]]] = Var(None)
   val treasuresVar: Var[Set[Location]] = Var(Set())
 
@@ -55,9 +55,11 @@ class SpectatorGameView(
         clocks.get(black).foreach(clock => blackClockVar.set(clock.remaining))
       }
       case UpdateBoardState(nextActivePlayer, playerAction, pieces, gold, treasures) => {
-        val oldPieces = piecesVar.now()
-        val newMoves  = MoveAnimation.inferMoves(oldPieces, pieces)
-        animatingMovesVar.update(list => list ++ newMoves)
+        val moveAnimation = playerAction match {
+          case PieceMove(piece, from, to) => Some(AnimatingMove(piece, from, to))
+          case PiecePlacement(_, _) => None
+        }
+        moveAnimationVar.set(moveAnimation)
         piecesVar.set(pieces)
         treasuresVar.set(treasures)
         gold.get(white).foreach(whiteGoldVar.set(_))
