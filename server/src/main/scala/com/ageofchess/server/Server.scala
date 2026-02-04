@@ -52,6 +52,15 @@ object Server extends MainRoutes {
     )
   }
 
+  @cask.post("/api/create-game")
+  def createGame(): Response[String] = {
+    val gameId = java.util.UUID.randomUUID().toString
+    pending.update(gameId, Pending(gameId, List(), List()))
+    updateLobbies()
+    val body = write(CreateGameResponse(gameId))
+    cask.Response(body, headers = Seq("Content-Type" -> "application/json"))
+  }
+
   @cask.get("/game/:gameId")
   def serveGamePage(gameId: String, as: Option[String] = None): Response[String] = {
     cask.Response(
