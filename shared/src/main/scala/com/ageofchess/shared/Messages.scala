@@ -61,6 +61,11 @@ object Messages {
     implicit val rw: ReadWriter[ResolveGame] = macroRW
   }
 
+  case class CreateGameRequest(initialClockSeconds: Int, boardSize: Int)
+  object CreateGameRequest {
+    implicit val rw: ReadWriter[CreateGameRequest] = macroRW
+  }
+
   case class CreateGameResponse(gameId: String)
   object CreateGameResponse {
     implicit val rw: ReadWriter[CreateGameResponse] = macroRW

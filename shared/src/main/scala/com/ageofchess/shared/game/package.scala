@@ -10,6 +10,18 @@ import java.time.Instant
 import scala.concurrent.duration._
 
 package object game {
+
+  case class GameSettings(initialClock: FiniteDuration, boardSize: Int)
+  object GameSettings {
+    val MinBoardSize = 6
+    val MaxBoardSize = 20
+    def fromSeconds(seconds: Int, boardSize: Int = 10): GameSettings = {
+      val clamped = math.max(MinBoardSize, math.min(MaxBoardSize, boardSize))
+      GameSettings(seconds.seconds, clamped)
+    }
+    val default: GameSettings = GameSettings(1.minute, 10)
+  }
+
   case class Game(
     gameId: String,
     white: Player,
@@ -28,22 +40,20 @@ package object game {
     }
   }
 
-  case class PendingGame(
-    gameId: String,
-    player1: String
-  )
 
   case class Pending(
     gameId: String,
     players: List[UserId],
-    spectators: List[UserId]
+    spectators: List[UserId],
+    gameSettings: GameSettings = GameSettings.default
   )
 
   def constructActiveGame(
     gameId: String,
     player1: UserId,
     player2: UserId,
-    spectators: List[UserId]
+    spectators: List[UserId],
+    gameSettings: GameSettings
   ): ActiveGame = {
 
     val coin = Random.nextInt(2)
@@ -52,7 +62,7 @@ package object game {
     val white = Player(whitePlayerId, White)
     val black = Player(blackPlayerId, Black)
 
-    val board = BoardGenerator.generateBoard(20)
+    val board = BoardGenerator.generateBoard(gameSettings.boardSize)
     val pieces = defaultPieces
     val gold = Map(white -> 100, black -> 100)
     val treasures = Set(Location(0, 1))
@@ -68,9 +78,10 @@ package object game {
       white
     )
 
+    val clock = gameSettings.initialClock
     ActiveGame(
       gameState,
-      Map(white -> PlayerClock(1.minute, Instant.now().toEpochMilli), black -> PlayerClock(1.minute, Instant.now().toEpochMilli)),
+      Map(white -> PlayerClock(clock, Instant.now().toEpochMilli), black -> PlayerClock(clock, Instant.now().toEpochMilli)),
       List(white, black),
       spectators.map(Spectator(_))
     )

@@ -53,12 +53,20 @@ object Server extends MainRoutes {
   }
 
   @cask.post("/api/create-game")
-  def createGame(): Response[String] = {
+  def createGame(request: cask.Request): Response[String] = {
+    val settings = try {
+      val requestBody = request.text()
+      if (requestBody == null || requestBody.isEmpty) GameSettings.default
+      else {
+        val r = read[CreateGameRequest](requestBody)
+        GameSettings.fromSeconds(r.initialClockSeconds, r.boardSize)
+      }
+    } catch { case _: Exception => GameSettings.default }
     val gameId = java.util.UUID.randomUUID().toString
-    pending.update(gameId, Pending(gameId, List(), List()))
+    pending.update(gameId, Pending(gameId, List(), List(), settings))
     updateLobbies()
-    val body = write(CreateGameResponse(gameId))
-    cask.Response(body, headers = Seq("Content-Type" -> "application/json"))
+    val responseBody = write(CreateGameResponse(gameId))
+    cask.Response(responseBody, headers = Seq("Content-Type" -> "application/json"))
   }
 
   @cask.get("/game/:gameId")
@@ -127,6 +135,8 @@ object Server extends MainRoutes {
       userChannels.update(userId, channel)
 
       println(games.get(gameId), user, as)
+
+      // TODO: don't let a player join/create a game just by going to this link - they must use the lobby page
       
       games.get(gameId) match {
         case None => {
@@ -138,7 +148,7 @@ object Server extends MainRoutes {
                   val updatedLobby = pendingLobby.copy(players = pendingLobby.players :+ userId)
                   updatedLobby.players match {
                     case List(p1, p2, _*) => {
-                      val game = constructActiveGame(gameId, p1, p2, updatedLobby.spectators)
+                      val game = constructActiveGame(gameId, p1, p2, updatedLobby.spectators, updatedLobby.gameSettings)
                       pending.remove(gameId)
                       games.update(gameId, game)
                     }
@@ -281,8 +291,8 @@ object Server extends MainRoutes {
 
   def createLobby(user: UserId, gameId: String, role: String): Unit = {
     val pendingGame = role match {
-      case "player" => Pending(gameId, List(user), List())
-      case "spectator" => Pending(gameId, List(), List(user))
+      case "player" => Pending(gameId, List(user), List(), GameSettings.default)
+      case "spectator" => Pending(gameId, List(), List(user), GameSettings.default)
     }
 
     pending.update(gameId, pendingGame)
