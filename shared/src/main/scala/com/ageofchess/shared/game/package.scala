@@ -63,7 +63,30 @@ package object game {
     val black = Player(blackPlayerId, Black)
 
     val board = BoardGenerator.generateBoard(gameSettings.boardSize)
-    val pieces = defaultPieces
+    val rnd = new Random()
+
+    val size = board.squares.size
+    def legalPositions: List[Location] = {
+      (for {
+        row <- 0 until size
+        col <- 0 until size
+        if board.squares(row)(col) != Rocks
+      } yield Location(row, col)).toList
+    }
+
+    def opposite(loc: Location): Location = Location(size - 1 - loc.row, size - 1 - loc.col)
+
+    val legal = legalPositions
+    val legalSet = legal.toSet
+    val whiteCandidates = legal.filter(loc => {
+      val opp = opposite(loc)
+      opp != loc && legalSet.contains(opp)
+    })
+    require(whiteCandidates.nonEmpty, "Board has no valid position with legal opposite for kings")
+    val whiteLoc = whiteCandidates(rnd.nextInt(whiteCandidates.length))
+    val blackLoc = opposite(whiteLoc)
+
+    val pieces = Map(whiteLoc -> Piece(White, King), blackLoc -> Piece(Black, King))
     val gold = Map(white -> 100, black -> 100)
     val treasures = Set(Location(0, 1))
 
