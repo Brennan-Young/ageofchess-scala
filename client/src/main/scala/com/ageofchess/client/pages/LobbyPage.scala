@@ -16,6 +16,7 @@ import scala.concurrent.duration._
 object LobbyPage {
 
   /** Allowed starting timer values: 15s, 30s, 45s, 1m–20m (by minute), 20m–60m (by 5 min). */
+  // TODO: migrate to GameSettings class to be consistent with where Min/MaxBoardSize are defined
   val allowedDurationsSeconds: List[Int] = {
     val seconds = List(15, 30, 45)
     val oneTo20Minutes = (1 to 20).map(_ * 60).toList
