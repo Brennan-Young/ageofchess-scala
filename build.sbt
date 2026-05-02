@@ -40,6 +40,14 @@ lazy val server = project.in(file("server"))
     )
   )
 
+lazy val tests = project.in(file("tests"))
+  .dependsOn(shared.jvm)
+  .settings(
+    name := "tests",
+    scalaVersion := "2.12.18",
+    libraryDependencies += Dependencies.scalaTest % Test
+  )
+
 lazy val client = project.in(file("client"))
   .enablePlugins(ScalaJSPlugin)
   .dependsOn(shared.js)
